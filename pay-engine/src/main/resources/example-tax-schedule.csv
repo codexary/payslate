@@ -1,0 +1,5 @@
+# SYNTHETIC example weekly withholding schedule; not an official tax table.
+# minimum gross,base withholding,rate on amount above minimum
+0.00,0.00,0.00
+500.00,0.00,0.10
+1000.00,50.00,0.20
