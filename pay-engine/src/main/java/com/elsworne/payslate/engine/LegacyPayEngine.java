@@ -30,11 +30,10 @@ public class LegacyPayEngine {
             long minutes = Duration.between(s.start(), s.end()).toMinutes();
             if (minutes > 24*60 || minutes < 1) throw new IllegalArgumentException("Shift must be 1 minute to 24 hours");
             int paidMinutes = (int) minutes;
-            // The old routine chose the start day once, even when the shift crossed midnight.
-            DayOfWeek day = s.start().getDayOfWeek();
             LocalDateTime clock = s.start();
             for (int m=0; m<paidMinutes; m++) {
                 LocalDate date = clock.toLocalDate();
+                DayOfWeek day = date.getDayOfWeek();
                 int daily = dailyMinutes.containsKey(date) ? dailyMinutes.get(date) : 0;
                 dailyMinutes.put(date, daily+1);
                 weeklyMinutes++;
