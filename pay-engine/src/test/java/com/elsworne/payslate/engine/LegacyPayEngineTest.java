@@ -46,6 +46,13 @@ class LegacyPayEngineTest {
     assertThat(result.gross()).isEqualByComparingTo("45.00");
   }
 
+  @Test
+  void cafeFridayShiftCrossingMidnightPaysSaturdayPenalty() {
+    var result = engine.calculate(new BigDecimal("20"), Employment.PERMANENT, List.of(
+        shift("2026-02-13T23:00", "2026-02-14T01:00", false)));
+    assertThat(result.gross()).isEqualByComparingTo("45.00");
+  }
+
   static Shift shift(String start, String end, boolean holiday) {
     return new Shift(LocalDateTime.parse(start), LocalDateTime.parse(end), holiday);
   }
