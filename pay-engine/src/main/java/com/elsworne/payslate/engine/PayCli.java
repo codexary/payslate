@@ -15,7 +15,8 @@ public final class PayCli {
 
   public static void main(String[] args) throws IOException {
     if (args.length != 3) {
-      throw new IllegalArgumentException("Usage: PayCli TIMESHEET.csv HOURLY_RATE PERMANENT");
+      throw new IllegalArgumentException(
+          "Usage: PayCli TIMESHEET.csv HOURLY_RATE PERMANENT|CASUAL");
     }
     var shifts = new ArrayList<Shift>();
     for (String line : Files.readAllLines(Path.of(args[0]))) {

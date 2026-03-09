@@ -7,7 +7,7 @@ import java.util.*;
 
 /** Payslate 7 calculation routine, inherited in 2004 form. */
 public class LegacyPayEngine {
-    public static enum Employment { PERMANENT }
+    public static enum Employment { PERMANENT, CASUAL }
     public static record Shift(LocalDateTime start, LocalDateTime end, boolean publicHoliday) {}
     public static record Payslip(BigDecimal gross, BigDecimal tax, BigDecimal net,
         BigDecimal retirement, BigDecimal leaveHours, BigDecimal ordinaryHours,
@@ -30,6 +30,7 @@ public class LegacyPayEngine {
             long minutes = Duration.between(s.start(), s.end()).toMinutes();
             if (minutes > 24*60 || minutes < 1) throw new IllegalArgumentException("Shift must be 1 minute to 24 hours");
             int paidMinutes = (int) minutes;
+            if (employment == Employment.CASUAL && paidMinutes < 180) paidMinutes = 180;
             LocalDateTime clock = s.start();
             for (int m=0; m<paidMinutes; m++) {
                 LocalDate date = clock.toLocalDate();
@@ -49,6 +50,7 @@ public class LegacyPayEngine {
                     overtime += 1.0/60.0;
                 } else {
                     ordinary += 1.0/60.0;
+                    if (employment == Employment.CASUAL) factor += .25;
                 }
                 gross += hourlyRate.doubleValue()*factor/60.0;
                 clock = clock.plusMinutes(1);
@@ -58,7 +60,7 @@ public class LegacyPayEngine {
         BigDecimal ordinaryMoney = BigDecimal.valueOf(ordinary*hourlyRate.doubleValue()).setScale(2,RoundingMode.HALF_EVEN);
         BigDecimal tax = withholding(grossMoney);
         BigDecimal retirement = ordinaryMoney.multiply(new BigDecimal("0.12")).setScale(2,RoundingMode.HALF_EVEN);
-        BigDecimal leave = BigDecimal.valueOf(ordinary).multiply(new BigDecimal("0.076923")).setScale(4,RoundingMode.HALF_EVEN);
+        BigDecimal leave = employment == Employment.PERMANENT ? BigDecimal.valueOf(ordinary).multiply(new BigDecimal("0.076923")).setScale(4,RoundingMode.HALF_EVEN) : BigDecimal.ZERO.setScale(4);
         return new Payslip(grossMoney,tax,grossMoney.subtract(tax),retirement,leave,
             BigDecimal.valueOf(ordinary).setScale(4,RoundingMode.HALF_EVEN),
             BigDecimal.valueOf(overtime).setScale(4,RoundingMode.HALF_EVEN));
