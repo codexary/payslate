@@ -56,6 +56,18 @@ class LegacyPayEngineTest {
     assertThat(result.gross()).isEqualByComparingTo("45.00");
   }
 
+  @Test
+  void exactlyThirtyEightHoursInWeekHasNoOvertime() {
+    var result = engine.calculate(new BigDecimal("20"), Employment.PERMANENT, List.of(
+        shift("2026-02-16T09:00", "2026-02-16T17:00", false),
+        shift("2026-02-17T09:00", "2026-02-17T17:00", false),
+        shift("2026-02-18T09:00", "2026-02-18T17:00", false),
+        shift("2026-02-19T09:00", "2026-02-19T17:00", false),
+        shift("2026-02-20T09:00", "2026-02-20T15:00", false)));
+    assertThat(result.gross()).isEqualByComparingTo("760.00");
+    assertThat(result.overtimeHours()).isZero();
+  }
+
   static Shift shift(String start, String end, boolean holiday) {
     return new Shift(LocalDateTime.parse(start), LocalDateTime.parse(end), holiday);
   }
