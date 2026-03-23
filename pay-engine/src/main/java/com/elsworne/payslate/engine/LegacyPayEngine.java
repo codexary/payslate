@@ -38,7 +38,7 @@ public class LegacyPayEngine {
                 int daily = dailyMinutes.containsKey(date) ? dailyMinutes.get(date) : 0;
                 dailyMinutes.put(date, daily+1);
                 weeklyMinutes++;
-                boolean extra = daily >= 8*60 || weeklyMinutes >= 38*60;
+                boolean extra = daily >= 8*60 || weeklyMinutes > 38*60;
                 double factor = 1.0;
                 if (s.publicHoliday()) factor = 2.25;
                 else if (day == DayOfWeek.SATURDAY) factor = 1.25;
