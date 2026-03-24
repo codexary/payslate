@@ -20,7 +20,9 @@ public class LegacyPayEngine {
         Collections.sort(ordered, new Comparator<Shift>() {
             public int compare(Shift a, Shift b) { return a.start().compareTo(b.start()); }
         });
-        double gross = 0, ordinary = 0, overtime = 0;
+        double ordinary = 0, overtime = 0;
+        long rateQuarterMinutes = 0;
+        int ordinaryMinutes = 0;
         int weeklyMinutes = 0, overtimeMinutes = 0;
         HashMap<LocalDate,Integer> dailyMinutes = new HashMap<LocalDate,Integer>();
         for (int i=0; i<ordered.size(); i++) {
@@ -50,14 +52,15 @@ public class LegacyPayEngine {
                     overtime += 1.0/60.0;
                 } else {
                     ordinary += 1.0/60.0;
+                    ordinaryMinutes++;
                     if (employment == Employment.CASUAL) factor += .25;
                 }
-                gross += hourlyRate.doubleValue()*factor/60.0;
+                rateQuarterMinutes += Math.round(factor*4);
                 clock = clock.plusMinutes(1);
             }
         }
-        BigDecimal grossMoney = BigDecimal.valueOf(gross).setScale(2,RoundingMode.HALF_EVEN);
-        BigDecimal ordinaryMoney = BigDecimal.valueOf(ordinary*hourlyRate.doubleValue()).setScale(2,RoundingMode.HALF_EVEN);
+        BigDecimal grossMoney = hourlyRate.multiply(BigDecimal.valueOf(rateQuarterMinutes)).divide(new BigDecimal("240"),2,RoundingMode.HALF_EVEN);
+        BigDecimal ordinaryMoney = hourlyRate.multiply(BigDecimal.valueOf(ordinaryMinutes)).divide(new BigDecimal("60"),2,RoundingMode.HALF_EVEN);
         BigDecimal tax = withholding(grossMoney);
         BigDecimal retirement = ordinaryMoney.multiply(new BigDecimal("0.12")).setScale(2,RoundingMode.HALF_EVEN);
         BigDecimal leave = employment == Employment.PERMANENT ? BigDecimal.valueOf(ordinary).multiply(new BigDecimal("0.076923")).setScale(4,RoundingMode.HALF_EVEN) : BigDecimal.ZERO.setScale(4);
