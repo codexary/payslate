@@ -2,7 +2,7 @@
 
 # Payslate
 
-Payslate began as payroll software for small and medium businesses. Payslate Online is the hosted service being built around the inherited 2004 pay engine. The architecture grows from `pay-engine` to `bank-file`, then a web API and database for timesheet import, pay runs and ABA downloads. This repository uses synthetic data only.
+Payslate began as payroll software for small and medium businesses. Payslate Online is the hosted service being built around the inherited 2004 pay engine. The current modules are `pay-engine` and `bank-file`; a web API and database will add timesheet import, pay runs and ABA downloads. This repository uses synthetic data only. Bank test BSBs check field shape; no generated file is intended for bank submission.
 
 ## Build and run
 
