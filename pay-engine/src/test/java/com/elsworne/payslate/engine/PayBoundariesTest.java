@@ -56,7 +56,9 @@ class PayBoundariesTest {
         Arguments.of("tax_below_500_49999", "499.99", "0.00"),
         Arguments.of("tax_on_500", "500.00", "0.00"),
         Arguments.of("tax_above_500_50001", "500.01", "0.00"),
+        Arguments.of("tax_below_half_cent_500049", "500.049", "0.00"),
         Arguments.of("tax_half_up_50005", "500.05", "0.01"),
+        Arguments.of("tax_above_half_cent_500051", "500.051", "0.01"),
         Arguments.of("tax_below_1000_99999", "999.99", "50.00"),
         Arguments.of("tax_on_1000", "1000.00", "50.00"),
         Arguments.of("tax_above_1000_100001", "1000.01", "50.00"),
@@ -73,7 +75,9 @@ class PayBoundariesTest {
 
   static Stream<Arguments> payRounding() {
     return Stream.of(
+        Arguments.of("pay_below_half_cent_0004", "0.004", "0.00"),
         Arguments.of("pay_half_even_down_0005", "0.005", "0.00"),
+        Arguments.of("pay_above_half_cent_0006", "0.006", "0.01"),
         Arguments.of("pay_half_even_up_0015", "0.015", "0.02"));
   }
 
