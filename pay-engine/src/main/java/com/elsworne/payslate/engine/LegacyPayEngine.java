@@ -21,9 +21,10 @@ public class LegacyPayEngine {
             public int compare(Shift a, Shift b) { return a.start().compareTo(b.start()); }
         });
         double ordinary = 0, overtime = 0;
-        long rateQuarterMinutes = 0;
+        BigDecimal weightedMinutes = BigDecimal.ZERO;
         int ordinaryMinutes = 0;
-        int weeklyMinutes = 0, overtimeMinutes = 0;
+        HashMap<LocalDate,Integer> weeklyMinutes = new HashMap<LocalDate,Integer>();
+        HashMap<LocalDate,Integer> overtimeMinutes = new HashMap<LocalDate,Integer>();
         HashMap<LocalDate,Integer> dailyMinutes = new HashMap<LocalDate,Integer>();
         for (int i=0; i<ordered.size(); i++) {
             Shift s = ordered.get(i);
@@ -39,15 +40,18 @@ public class LegacyPayEngine {
                 DayOfWeek day = date.getDayOfWeek();
                 int daily = dailyMinutes.containsKey(date) ? dailyMinutes.get(date) : 0;
                 dailyMinutes.put(date, daily+1);
-                weeklyMinutes++;
-                boolean extra = daily >= 8*60 || weeklyMinutes > 38*60;
+                LocalDate week = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+                int weekMinutes = weeklyMinutes.getOrDefault(week, 0) + 1;
+                weeklyMinutes.put(week, weekMinutes);
+                boolean extra = daily >= 8*60 || weekMinutes > 38*60;
                 double factor = 1.0;
                 if (s.publicHoliday()) factor = 2.25;
                 else if (day == DayOfWeek.SATURDAY) factor = 1.25;
                 else if (day == DayOfWeek.SUNDAY) factor = 1.5;
                 if (extra) {
-                    overtimeMinutes++;
-                    double tier = overtimeMinutes <= 120 ? 1.5 : 2.0;
+                    int weekOvertime = overtimeMinutes.getOrDefault(week, 0) + 1;
+                    overtimeMinutes.put(week, weekOvertime);
+                    double tier = weekOvertime <= 120 ? 1.5 : 2.0;
                     if (factor < tier || factor > 2.0) factor = tier;
                     overtime += 1.0/60.0;
                 } else {
@@ -55,11 +59,11 @@ public class LegacyPayEngine {
                     ordinaryMinutes++;
                     if (employment == Employment.CASUAL) factor += .25;
                 }
-                rateQuarterMinutes += Math.round(factor*4);
+                weightedMinutes = weightedMinutes.add(BigDecimal.valueOf(factor));
                 clock = clock.plusMinutes(1);
             }
         }
-        BigDecimal grossMoney = hourlyRate.multiply(BigDecimal.valueOf(rateQuarterMinutes)).divide(new BigDecimal("240"),2,RoundingMode.HALF_EVEN);
+        BigDecimal grossMoney = hourlyRate.multiply(weightedMinutes).divide(new BigDecimal("60"),2,RoundingMode.HALF_EVEN);
         BigDecimal ordinaryMoney = hourlyRate.multiply(BigDecimal.valueOf(ordinaryMinutes)).divide(new BigDecimal("60"),2,RoundingMode.HALF_EVEN);
         BigDecimal tax = withholding(grossMoney);
         BigDecimal retirement = ordinaryMoney.multiply(new BigDecimal("0.12")).setScale(2,RoundingMode.HALF_EVEN);

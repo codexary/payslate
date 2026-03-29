@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -49,6 +50,39 @@ class PayBoundariesTest {
     var result = new LegacyPayEngine().calculate(new BigDecimal("20"), type, shifts);
     assertThat(result.gross()).as(name).isEqualByComparingTo(gross);
     assertThat(result.overtimeHours()).as(name).isEqualByComparingTo(overtime);
+  }
+
+  @Test
+  void weeklyThresholdResetsForSecondWeekOfPayPeriod() {
+    List<Shift> shifts = new ArrayList<>();
+    for (int week = 0; week < 2; week++) {
+      for (int day = 0; day < 5; day++) {
+        LocalDateTime start = LocalDateTime.parse("2026-02-16T09:00").plusWeeks(week).plusDays(day);
+        shifts.add(new Shift(start, start.plusHours(day == 4 ? 6 : 8), false));
+      }
+    }
+    var result =
+        new LegacyPayEngine().calculate(new BigDecimal("20"), Employment.PERMANENT, shifts);
+    assertThat(result.gross()).isEqualByComparingTo("1520.00");
+    assertThat(result.overtimeHours()).isZero();
+  }
+
+  @Test
+  void shiftCrossingSundayMidnightUsesNextWeeksThreshold() {
+    List<Shift> shifts = new ArrayList<>();
+    for (int day = 0; day < 5; day++) {
+      LocalDateTime start = LocalDateTime.parse("2026-02-16T09:00").plusDays(day);
+      shifts.add(new Shift(start, start.plusHours(day == 4 ? 6 : 8), false));
+    }
+    shifts.add(
+        new Shift(
+            LocalDateTime.parse("2026-02-22T23:30"),
+            LocalDateTime.parse("2026-02-23T00:30"),
+            false));
+    var result =
+        new LegacyPayEngine().calculate(new BigDecimal("20"), Employment.PERMANENT, shifts);
+    assertThat(result.gross()).isEqualByComparingTo("785.00");
+    assertThat(result.overtimeHours()).isEqualByComparingTo("0.5000");
   }
 
   static Stream<Arguments> taxBoundaries() {
