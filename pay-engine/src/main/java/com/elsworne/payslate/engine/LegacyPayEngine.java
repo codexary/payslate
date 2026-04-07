@@ -43,7 +43,7 @@ public class LegacyPayEngine {
                 LocalDate week = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
                 int weekMinutes = weeklyMinutes.getOrDefault(week, 0) + 1;
                 weeklyMinutes.put(week, weekMinutes);
-                boolean extra = daily >= 8*60 || weekMinutes > 38*60;
+                boolean extra = isOvertime(daily, weekMinutes);
                 double factor = 1.0;
                 if (s.publicHoliday()) factor = 2.25;
                 else if (day == DayOfWeek.SATURDAY) factor = 1.25;
@@ -52,7 +52,7 @@ public class LegacyPayEngine {
                     int weekOvertime = overtimeMinutes.getOrDefault(week, 0) + 1;
                     overtimeMinutes.put(week, weekOvertime);
                     double tier = weekOvertime <= 120 ? 1.5 : 2.0;
-                    if (factor < tier || factor > 2.0) factor = tier;
+                    factor = overtimeFactor(factor, tier);
                     overtime += 1.0/60.0;
                 } else {
                     ordinary += 1.0/60.0;
@@ -71,6 +71,15 @@ public class LegacyPayEngine {
         return new Payslip(grossMoney,tax,grossMoney.subtract(tax),retirement,leave,
             BigDecimal.valueOf(ordinary).setScale(4,RoundingMode.HALF_EVEN),
             BigDecimal.valueOf(overtime).setScale(4,RoundingMode.HALF_EVEN));
+    }
+
+    boolean isOvertime(int daily, int weekly) {
+        return daily >= 8*60 || weekly > 38*60;
+    }
+
+    double overtimeFactor(double factor, double tier) {
+        if (factor < tier || factor > 2.0) factor = tier;
+        return factor;
     }
 
     public BigDecimal withholding(BigDecimal gross) {
