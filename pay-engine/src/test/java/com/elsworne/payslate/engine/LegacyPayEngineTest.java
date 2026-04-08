@@ -72,6 +72,16 @@ class LegacyPayEngineTest {
     assertThat(result.overtimeHours()).isZero();
   }
 
+  @Test
+  void holidayOvertimeKeepsHigherHolidayFactor() {
+    var result =
+        engine.calculate(
+            new BigDecimal("10"),
+            Employment.PERMANENT,
+            List.of(shift("2026-02-16T09:00", "2026-02-16T18:00", true)));
+    assertThat(result.gross()).isEqualByComparingTo("202.50");
+  }
+
   static Shift shift(String start, String end, boolean holiday) {
     return new Shift(LocalDateTime.parse(start), LocalDateTime.parse(end), holiday);
   }
