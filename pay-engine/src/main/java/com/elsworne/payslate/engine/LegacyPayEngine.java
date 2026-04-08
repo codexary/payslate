@@ -78,7 +78,7 @@ public class LegacyPayEngine {
     }
 
     double overtimeFactor(double factor, double tier) {
-        if (factor < tier || factor > 2.0) factor = tier;
+        if (factor < tier) factor = tier;
         return factor;
     }
 
