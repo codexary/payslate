@@ -74,7 +74,9 @@ public class LegacyPayEngine {
     }
 
     boolean isOvertime(int daily, int weekly) {
-        return daily >= 8*60 || weekly > 38*60;
+        /* n1 */ if (daily >= 8*60) return true;
+        /* n2 */ if (weekly > 38*60) return true;
+        /* n3 */ return false;
     }
 
     double overtimeFactor(double factor, double tier) {
