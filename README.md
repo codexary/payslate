@@ -23,6 +23,8 @@ Net: 20.00
 
 The tax schedule in `pay-engine/src/main/resources/example-tax-schedule.csv` is an **example for tests**, not official tax guidance. Production must load official tables each financial year. The CLI CSV is deliberately small; the rostering format spike explores the product importer.
 
+Coverage: `./mvnw -B -ntp verify` writes `pay-engine/target/site/jacoco/index.html` and `jacoco.xml`; the pay-engine branch gate is 65%. See `docs/test-design/overtime-control-flow.md`.
+
 ## About this repository
 
 Elsworne, Payslate and the team are fictional.
