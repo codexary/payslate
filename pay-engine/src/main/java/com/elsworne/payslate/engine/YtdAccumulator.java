@@ -11,7 +11,7 @@ public class YtdAccumulator {
         Objects.requireNonNull(gross);
         Objects.requireNonNull(adjustment);
         BigDecimal total = yearToDate;
-        if (adjustment.signum() < 0) total = BigDecimal.ZERO;
+        if (adjustment.signum() < 0) total = yearToDate;
         total = total.add(gross).add(adjustment);
         yearToDate = total;
         return total;
