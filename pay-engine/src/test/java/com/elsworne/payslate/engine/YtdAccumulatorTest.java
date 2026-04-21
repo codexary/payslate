@@ -13,4 +13,12 @@ class YtdAccumulatorTest {
     assertThat(ytd.add(new BigDecimal("50.00"), new BigDecimal("10.00")))
         .isEqualByComparingTo("160.00");
   }
+
+  @Test
+  void negativeAdjustmentRetainsEarlierPay() {
+    var ytd = new YtdAccumulator();
+    ytd.add(new BigDecimal("100.00"), BigDecimal.ZERO);
+    assertThat(ytd.add(new BigDecimal("50.00"), new BigDecimal("-10.00")))
+        .isEqualByComparingTo("140.00");
+  }
 }
