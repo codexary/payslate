@@ -5,15 +5,12 @@ import java.util.Objects;
 
 /** Payslate 7 year-to-date total. */
 public class YtdAccumulator {
-    private BigDecimal yearToDate = BigDecimal.ZERO;
+  private BigDecimal yearToDate = BigDecimal.ZERO;
 
-    public BigDecimal add(BigDecimal gross, BigDecimal adjustment) {
-        Objects.requireNonNull(gross);
-        Objects.requireNonNull(adjustment);
-        BigDecimal total = yearToDate;
-        if (adjustment.signum() < 0) total = yearToDate;
-        total = total.add(gross).add(adjustment);
-        yearToDate = total;
-        return total;
-    }
+  public BigDecimal add(BigDecimal gross, BigDecimal adjustment) {
+    Objects.requireNonNull(gross);
+    Objects.requireNonNull(adjustment);
+    yearToDate = yearToDate.add(gross).add(adjustment);
+    return yearToDate;
+  }
 }

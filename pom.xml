@@ -59,7 +59,6 @@
                     <java>
                         <excludes>
                             <exclude>**/LegacyPayEngine.java</exclude>
-                            <exclude>**/YtdAccumulator.java</exclude>
                         </excludes>
                         <googleJavaFormat>
                             <version>${google-java-format.version}</version>
