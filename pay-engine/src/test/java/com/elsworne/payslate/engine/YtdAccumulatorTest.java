@@ -15,6 +15,13 @@ class YtdAccumulatorTest {
   }
 
   @Test
+  void roundedTotalIsNotNegative() {
+    var ytd = new YtdAccumulator();
+    assertThat(ytd.add(new BigDecimal("0.005"), BigDecimal.ZERO)).isNotNegative();
+    assertThat(ytd.roundedCents()).isNotNegative();
+  }
+
+  @Test
   void negativeAdjustmentRetainsEarlierPay() {
     var ytd = new YtdAccumulator();
     ytd.add(new BigDecimal("100.00"), BigDecimal.ZERO);
