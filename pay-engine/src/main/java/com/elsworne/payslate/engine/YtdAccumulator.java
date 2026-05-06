@@ -15,7 +15,7 @@ public class YtdAccumulator {
   public BigDecimal add(BigDecimal gross, BigDecimal adjustment) {
     Objects.requireNonNull(gross);
     Objects.requireNonNull(adjustment);
-    yearToDate = yearToDate.add(gross).add(adjustment).setScale(2, RoundingMode.HALF_UP);
+    yearToDate = yearToDate.add(gross).add(adjustment).setScale(2, RoundingMode.HALF_EVEN);
     return yearToDate;
   }
 }
