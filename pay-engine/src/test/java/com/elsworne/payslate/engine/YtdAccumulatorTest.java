@@ -22,6 +22,14 @@ class YtdAccumulatorTest {
   }
 
   @Test
+  void roundsHalfCentToEvenAndReportsExactCents() {
+    var ytd = new YtdAccumulator();
+    assertThat(ytd.add(new BigDecimal("0.005"), BigDecimal.ZERO)).isEqualByComparingTo("0.00");
+    assertThat(ytd.add(new BigDecimal("12.34"), BigDecimal.ZERO)).isEqualByComparingTo("12.34");
+    assertThat(ytd.roundedCents()).isEqualTo(1234);
+  }
+
+  @Test
   void negativeAdjustmentRetainsEarlierPay() {
     var ytd = new YtdAccumulator();
     ytd.add(new BigDecimal("100.00"), BigDecimal.ZERO);
