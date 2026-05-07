@@ -30,3 +30,31 @@ jobs:
           java-version: '21'
           cache: maven
       - run: ./mvnw -B -ntp -Pdocker verify
+  mutation-changed:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Mutate changed pay-engine classes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git diff --name-only "$BASE_SHA" HEAD -- pay-engine/src/main/java > changed-files.txt
+          while IFS= read -r source; do
+            case "$source" in
+              pay-engine/src/main/java/*.java)
+                class_name="${source#pay-engine/src/main/java/}"
+                class_name="${class_name%.java}"
+                class_name="${class_name//\//.}"
+                ./mvnw -B -ntp -pl pay-engine "-DtargetClasses=${class_name}*" test-compile org.pitest:pitest-maven:mutationCoverage
+                ;;
+            esac
+          done < changed-files.txt
