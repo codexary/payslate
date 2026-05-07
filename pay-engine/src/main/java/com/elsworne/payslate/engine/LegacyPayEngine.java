@@ -16,6 +16,10 @@ public class LegacyPayEngine {
     public Payslip calculate(BigDecimal hourlyRate, Employment employment, List<Shift> shifts) {
         if (hourlyRate == null || hourlyRate.signum() < 0 || employment == null || shifts == null)
             throw new IllegalArgumentException("Invalid pay input");
+        for (Shift shift : shifts) {
+            if (shift == null || shift.start() == null || shift.end() == null || !shift.end().isAfter(shift.start()))
+                throw new IllegalArgumentException("Invalid shift");
+        }
         ArrayList<Shift> ordered = new ArrayList<Shift>(shifts);
         Collections.sort(ordered, new Comparator<Shift>() {
             public int compare(Shift a, Shift b) { return a.start().compareTo(b.start()); }
@@ -28,8 +32,6 @@ public class LegacyPayEngine {
         HashMap<LocalDate,Integer> dailyMinutes = new HashMap<LocalDate,Integer>();
         for (int i=0; i<ordered.size(); i++) {
             Shift s = ordered.get(i);
-            if (s == null || s.start() == null || s.end() == null || !s.end().isAfter(s.start()))
-                throw new IllegalArgumentException("Invalid shift");
             long minutes = Duration.between(s.start(), s.end()).toMinutes();
             if (minutes > 24*60 || minutes < 1) throw new IllegalArgumentException("Shift must be 1 minute to 24 hours");
             int paidMinutes = (int) minutes;

@@ -1,11 +1,13 @@
 package com.elsworne.payslate.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.elsworne.payslate.engine.LegacyPayEngine.Employment;
 import com.elsworne.payslate.engine.LegacyPayEngine.Shift;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -80,6 +82,25 @@ class LegacyPayEngineTest {
             Employment.PERMANENT,
             List.of(shift("2026-02-16T09:00", "2026-02-16T18:00", true)));
     assertThat(result.gross()).isEqualByComparingTo("202.50");
+  }
+
+  @Test
+  void nullShiftReportsInvalidShiftBeforeSorting() {
+    assertThatThrownBy(
+            () ->
+                engine.calculate(
+                    new BigDecimal("20"), Employment.PERMANENT, Arrays.asList((Shift) null)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid shift");
+  }
+
+  @Test
+  void missingStartReportsInvalidShiftBeforeSorting() {
+    var invalid = new Shift(null, LocalDateTime.parse("2026-02-16T11:00"), false);
+    assertThatThrownBy(
+            () -> engine.calculate(new BigDecimal("20"), Employment.PERMANENT, List.of(invalid)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid shift");
   }
 
   static Shift shift(String start, String end, boolean holiday) {
