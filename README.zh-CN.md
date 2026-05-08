@@ -25,6 +25,8 @@ Net: 20.00
 
 覆盖率：`./mvnw -B -ntp verify` 生成 `pay-engine/target/site/jacoco/index.html` 和 `jacoco.xml`；pay-engine 分支门槛为 65%。参见 `docs/test-design/overtime-control-flow.zh-CN.md`。
 
+变异测试：`./mvnw -B -ntp -pl pay-engine test-compile org.pitest:pitest-maven:mutationCoverage` 在 `pay-engine/target/pit-reports/` 写入 HTML 和 XML。实测基线见 `docs/quality/mutation-report.zh-CN.md`。
+
 ## 关于本仓库
 
 Elsworne、Payslate 和团队成员均为虚构。

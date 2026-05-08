@@ -25,6 +25,8 @@ The tax schedule in `pay-engine/src/main/resources/example-tax-schedule.csv` is 
 
 Coverage: `./mvnw -B -ntp verify` writes `pay-engine/target/site/jacoco/index.html` and `jacoco.xml`; the pay-engine branch gate is 65%. See `docs/test-design/overtime-control-flow.md`.
 
+Mutation analysis: `./mvnw -B -ntp -pl pay-engine test-compile org.pitest:pitest-maven:mutationCoverage` writes HTML and XML under `pay-engine/target/pit-reports/`. See `docs/quality/mutation-report.md` for the measured baseline.
+
 ## About this repository
 
 Elsworne, Payslate and the team are fictional.
