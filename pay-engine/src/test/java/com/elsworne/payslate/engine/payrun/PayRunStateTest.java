@@ -8,7 +8,8 @@ import com.elsworne.payslate.engine.payrun.PayRun.State;
 import org.junit.jupiter.api.Test;
 
 class PayRunStateTest {
-  @Test void everyValidTransition() {
+  @Test
+  void everyValidTransition() {
     var run = new PayRun();
     assertThat(run.state()).isEqualTo(State.DRAFT);
     run.apply(Event.CALCULATE);
@@ -21,14 +22,17 @@ class PayRunStateTest {
     assertThat(run.state()).isEqualTo(State.REVERSED);
   }
 
-  @Test void everySneakPathLeavesStateAndApprovalCountUntouched() {
+  @Test
+  void everySneakPathLeavesStateAndApprovalCountUntouched() {
     Event[] events = Event.values();
     for (State state : State.values()) {
       for (Event event : events) {
         if (isValid(state, event)) continue;
         var run = at(state);
         int approvals = run.approvalCount();
-        assertThatThrownBy(() -> run.apply(event)).as(state + " / " + event).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> run.apply(event))
+            .as(state + " / " + event)
+            .isInstanceOf(IllegalStateException.class);
         assertThat(run.state()).isEqualTo(state);
         assertThat(run.approvalCount()).isEqualTo(approvals);
       }

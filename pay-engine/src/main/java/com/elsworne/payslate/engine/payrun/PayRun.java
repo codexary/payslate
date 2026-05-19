@@ -32,10 +32,6 @@ public final class PayRun {
 
   public void apply(Event event) {
     Objects.requireNonNull(event, "event");
-    if (event == Event.APPROVE && state == State.APPROVED) {
-      approvalCount++;
-      return;
-    }
     State next =
         switch (state) {
           case DRAFT -> event == Event.CALCULATE ? State.CALCULATED : null;
