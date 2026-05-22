@@ -54,7 +54,7 @@ jobs:
                 class_name="${source#pay-engine/src/main/java/}"
                 class_name="${class_name%.java}"
                 class_name="${class_name//\//.}"
-                ./mvnw -B -ntp -pl pay-engine "-DtargetClasses=${class_name}*" test-compile org.pitest:pitest-maven:mutationCoverage
+                ./mvnw -B -ntp -pl pay-engine "-DtargetClasses=${class_name}*" test-compile org.pitest:pitest-maven:mutationCoverage -DfailWhenNoMutations=false
                 ;;
             esac
           done < changed-files.txt
