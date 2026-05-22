@@ -15,8 +15,9 @@ public final class NetPay {
   }
 
   public BigDecimal net(EmployeePay pay, BigDecimal hours, BigDecimal adjustment) {
-    BigDecimal gross = pay.gross(hours);
-    BigDecimal tax = withholding.withholding(gross);
-    return EmployeePay.cents(gross.add(adjustment).subtract(tax));
+    BigDecimal adjustedGross = pay.gross(hours).add(adjustment);
+    BigDecimal tax =
+        adjustedGross.signum() > 0 ? withholding.withholding(adjustedGross) : BigDecimal.ZERO;
+    return EmployeePay.cents(adjustedGross.subtract(tax));
   }
 }

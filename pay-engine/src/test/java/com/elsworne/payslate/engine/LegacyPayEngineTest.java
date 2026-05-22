@@ -15,6 +15,18 @@ class LegacyPayEngineTest {
   private final LegacyPayEngine engine = new LegacyPayEngine();
 
   @Test
+  void negativeGrossIsRejectedByTaxSchedule() {
+    assertThatThrownBy(() -> engine.withholding(new BigDecimal("-0.01")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid gross for tax schedule");
+  }
+
+  @Test
+  void zeroGrossHasNoWithholding() {
+    assertThat(engine.withholding(new BigDecimal("0.00"))).isEqualByComparingTo("0.00");
+  }
+
+  @Test
   void ordinaryWeekdayShift() {
     var result =
         engine.calculate(

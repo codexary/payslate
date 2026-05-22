@@ -87,6 +87,7 @@ public class LegacyPayEngine {
     }
 
     public BigDecimal withholding(BigDecimal gross) {
+        if (gross.signum() < 0) throw new IllegalArgumentException("Invalid gross for tax schedule");
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                 LegacyPayEngine.class.getResourceAsStream("/example-tax-schedule.csv")))) {
             String line; BigDecimal min = BigDecimal.ZERO, base = BigDecimal.ZERO, rate = BigDecimal.ZERO;

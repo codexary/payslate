@@ -11,6 +11,13 @@ class NetPayScheduleTest {
   private final SalariedPay salary = new SalariedPay(new BigDecimal("650.00"));
 
   @Test
+  void bonusIsIncludedInTaxableGross() {
+    var result = netPay.net(salary, new BigDecimal("38"), new BigDecimal("100.00"));
+
+    assertThat(result).isEqualByComparingTo("725.00");
+  }
+
+  @Test
   void salaryCorrectionUsesAdjustedGrossForWithholding() {
     var schedule = new LegacyPayEngine();
     assertThat(schedule.withholding(new BigDecimal("650.00"))).isEqualByComparingTo("15.00");
