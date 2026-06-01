@@ -13,6 +13,7 @@
         </license>
     </licenses>
     <modules>
+        <module>legacy-engine</module>
         <module>pay-engine</module>
         <module>bank-file</module>
     </modules>
