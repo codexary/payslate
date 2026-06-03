@@ -48,6 +48,11 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           git diff --name-only "$BASE_SHA" HEAD -- pay-engine/src/main/java > changed-files.txt
+          # Changed-files.txt only lists pay-engine main sources; install the
+          # upstream modules once, and only when there is something to mutate.
+          if [ -s changed-files.txt ]; then
+            ./mvnw -B -ntp -pl pay-engine -am install -DskipTests
+          fi
           while IFS= read -r source; do
             case "$source" in
               pay-engine/src/main/java/*.java)
