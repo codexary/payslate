@@ -95,7 +95,7 @@ public final class PayEngine {
         gross,
         tax,
         deductions,
-        gross.subtract(tax).add(deductions),
+        gross.subtract(tax).subtract(deductions),
         retirement,
         leave,
         BigDecimal.valueOf(ordinary).divide(MINUTES_PER_HOUR, 4, RoundingMode.HALF_EVEN),
