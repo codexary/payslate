@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import net.jqwik.api.ForAll;
+import net.jqwik.api.GenerationMode;
 import net.jqwik.api.Property;
 import net.jqwik.api.constraints.IntRange;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,19 @@ class PayEnginePropertiesTest {
     assertThat(a.tax()).isEqualByComparingTo(b.tax());
     assertThat(a.retirement()).isEqualByComparingTo(b.retirement());
     assertThat(a.leaveHours()).isEqualByComparingTo(b.leaveHours());
+  }
+
+  @Property(generation = GenerationMode.RANDOMIZED)
+  void netEqualsGrossMinusTaxMinusDeductions(@ForAll @IntRange(min = 0, max = 100) int deductions) {
+    var start = LocalDateTime.of(2026, 2, 23, 8, 0);
+    var result =
+        current.calculate(
+            new BigDecimal("20"),
+            Employment.PERMANENT,
+            List.of(new Shift(start, start.plusHours(1), false)),
+            BigDecimal.valueOf(deductions));
+    assertThat(result.net())
+        .isEqualByComparingTo(result.gross().subtract(result.tax()).subtract(result.deductions()));
   }
 
   @Test
