@@ -82,6 +82,10 @@ public final class PayEngine {
             .multiply(BigDecimal.valueOf(ordinary))
             .divide(MINUTES_PER_HOUR, 2, RoundingMode.HALF_EVEN);
     BigDecimal tax = withholding(gross);
+    BigDecimal available = gross.subtract(tax);
+    if (deductions.compareTo(available) > 0)
+      throw new IllegalArgumentException(
+          "Deductions exceed available pay for employee " + employeeName);
     BigDecimal retirement =
         ordinaryMoney.multiply(new BigDecimal("0.12")).setScale(2, RoundingMode.HALF_EVEN);
     BigDecimal leave =

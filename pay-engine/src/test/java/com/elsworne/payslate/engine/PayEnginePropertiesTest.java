@@ -47,7 +47,7 @@ class PayEnginePropertiesTest {
   }
 
   @Property(generation = GenerationMode.RANDOMIZED)
-  void netEqualsGrossMinusTaxMinusDeductions(@ForAll @IntRange(min = 0, max = 100) int deductions) {
+  void netEqualsGrossMinusTaxMinusDeductions(@ForAll @IntRange(min = 0, max = 20) int deductions) {
     var start = LocalDateTime.of(2026, 2, 23, 8, 0);
     var result =
         current.calculate(
@@ -57,6 +57,34 @@ class PayEnginePropertiesTest {
             BigDecimal.valueOf(deductions));
     assertThat(result.net())
         .isEqualByComparingTo(result.gross().subtract(result.tax()).subtract(result.deductions()));
+  }
+
+  @Test
+  void deductionsAtAvailablePayYieldZeroNet() {
+    var start = LocalDateTime.of(2026, 2, 23, 8, 0);
+    var result =
+        current.calculate(
+            "Alice Test",
+            new BigDecimal("20"),
+            Employment.PERMANENT,
+            List.of(new Shift(start, start.plusHours(1), false)),
+            new BigDecimal("20.00"));
+    assertThat(result.net()).isZero();
+  }
+
+  @Test
+  void deductionsOverAvailablePayRejectNamedEmployee() {
+    var start = LocalDateTime.of(2026, 2, 23, 8, 0);
+    assertThatThrownBy(
+            () ->
+                current.calculate(
+                    "Alice Test",
+                    new BigDecimal("20"),
+                    Employment.PERMANENT,
+                    List.of(new Shift(start, start.plusHours(1), false)),
+                    new BigDecimal("20.01")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Deductions exceed available pay for employee Alice Test");
   }
 
   @Test
