@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${PAYSLATE_DB_URL}
+    username: ${PAYSLATE_DB_USER}
+    password: ${PAYSLATE_DB_PASSWORD}
+  flyway:
+    enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+logging:
+  structured:
+    format:
+      console: ecs

@@ -1,0 +1,70 @@
+openapi: 3.1.0
+info:
+  title: Payslate Online API
+  version: 1.0.0
+paths:
+  /v1/employees:
+    post:
+      operationId: createEmployee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, employment, hourlyRate, bsb, account]
+              properties:
+                name: {type: string}
+                employment: {type: string, enum: [PERMANENT, CASUAL]}
+                hourlyRate: {type: number}
+                bsb: {type: string}
+                account: {type: string}
+      responses:
+        '200': {description: Employee ID}
+        '400': {description: Problem Details}
+  /v1/timesheets:
+    post:
+      operationId: uploadTimesheets
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '200': {description: Imported row count}
+        '400': {description: Problem Details}
+  /v1/pay-runs:
+    post:
+      operationId: createPayRun
+      responses:
+        '200': {description: Pay run ID}
+  /v1/pay-runs/{id}:
+    get:
+      operationId: getPayRun
+      responses:
+        '200': {description: State}
+  /v1/pay-runs/{id}/{event}:
+    post:
+      operationId: transitionPayRun
+      description: event is calculate, approve, pay or reverse
+      responses:
+        '200': {description: New state}
+        '409': {description: Invalid transition as Problem Details}
+  /v1/pay-runs/{id}/payslips/{employeeId}:
+    get:
+      operationId: getPayslip
+      responses:
+        '200': {description: Gross, tax and net}
+  /v1/pay-runs/{id}/aba:
+    get:
+      operationId: downloadAba
+      responses:
+        '200':
+          description: ABA Direct Entry file
+          content:
+            text/plain:
+              schema: {type: string}

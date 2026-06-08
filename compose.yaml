@@ -1,0 +1,27 @@
+services:
+  database:
+    image: postgres:18.3-bookworm
+    environment:
+      POSTGRES_DB: payslate
+      POSTGRES_USER: ${PAYSLATE_DB_USER:?Set PAYSLATE_DB_USER}
+      POSTGRES_PASSWORD: ${PAYSLATE_DB_PASSWORD:?Set PAYSLATE_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d payslate"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    build: ./payslate-api
+    environment:
+      PAYSLATE_DB_URL: jdbc:postgresql://database:5432/payslate
+      PAYSLATE_DB_USER: ${PAYSLATE_DB_USER:?Set PAYSLATE_DB_USER}
+      PAYSLATE_DB_PASSWORD: ${PAYSLATE_DB_PASSWORD:?Set PAYSLATE_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${PAYSLATE_API_PORT:-8080}:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+volumes:
+  pgdata:

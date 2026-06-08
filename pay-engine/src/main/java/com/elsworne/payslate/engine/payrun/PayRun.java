@@ -22,6 +22,13 @@ public final class PayRun {
   private State state = State.DRAFT;
   private int approvalCount;
 
+  public static PayRun restore(State state) {
+    var run = new PayRun();
+    run.state = Objects.requireNonNull(state, "state");
+    run.approvalCount = state.ordinal() >= State.APPROVED.ordinal() ? 1 : 0;
+    return run;
+  }
+
   public State state() {
     return state;
   }

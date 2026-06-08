@@ -1,3 +1,5 @@
 .mvn/repository/
 .mvn/wrapper/dists/
 **/target/
+.mvn/maven.config
+**/.jqwik-database
