@@ -6,7 +6,6 @@ import com.elsworne.payslate.engine.PayEngine;
 import com.elsworne.payslate.engine.payrun.PayRun;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -157,7 +156,7 @@ public class PayrollService {
     var key = new GeneratedKeyHolder();
     jdbc.update(
         connection -> {
-          PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+          PreparedStatement ps = connection.prepareStatement(sql, new String[] {"id"});
           for (int i = 0; i < values.length; i++) ps.setObject(i + 1, values[i]);
           return ps;
         },
