@@ -29,7 +29,18 @@ Mutation analysis: `./mvnw -B -ntp -pl pay-engine test-compile org.pitest:pitest
 
 ## Payslate Online API
 
-Build with `./mvnw -B -ntp verify`. For a local PostgreSQL run, set `PAYSLATE_DB_USER` and `PAYSLATE_DB_PASSWORD` to non-default values, run `./mvnw -pl payslate-api -am package`, then `docker compose up --build`. The API listens on host port 8080; set `PAYSLATE_API_PORT` to use another port. `payslate-api/openapi.yaml` documents employees, CSV timesheets, pay runs, payslips and ABA downloads. The liveness and readiness URLs are `/actuator/health/liveness` and `/actuator/health/readiness`. Errors use `application/problem+json`; logs use structured ECS JSON. `./mvnw -B -ntp -Pdocker verify` also runs PostgreSQL Testcontainers tests. The CSV accepts comma, semicolon and tab delimiters, the header aliases from ADR 0003, ISO and Australian dates, 24-hour and 12-hour times, UTF-8 BOM and quoted names. It rejects mixed columns, invalid dates and empty shifts. All data in the tests is synthetic, and the bundled tax schedule is an example only; production must load official tables each financial year.
+Build with `./mvnw -B -ntp verify`. For a local PostgreSQL run, set `PAYSLATE_DB_USER`, `PAYSLATE_DB_PASSWORD`, `PAYSLATE_DEV_ISSUER_ADMIN`, and `PAYSLATE_DEV_ISSUER_PASSWORD` to local development values, run `./mvnw -pl payslate-api -am package`, then `docker compose up --build`. The API listens on host port 8080; set `PAYSLATE_API_PORT` to use another port. `payslate-api/openapi.yaml` documents employees, CSV timesheets, pay runs, payslips and ABA downloads. The liveness and readiness URLs are `/actuator/health/liveness` and `/actuator/health/readiness`. Errors use `application/problem+json`; logs use structured ECS JSON. `./mvnw -B -ntp -Pdocker verify` also runs PostgreSQL Testcontainers tests. The CSV accepts comma, semicolon and tab delimiters, the header aliases from ADR 0003, ISO and Australian dates, 24-hour and 12-hour times, UTF-8 BOM and quoted names. It rejects mixed columns, invalid dates and empty shifts. All data in the tests is synthetic, and the bundled tax schedule is an example only; production must load official tables each financial year.
+
+The local Compose stack includes a development OIDC issuer at `http://localhost:8081/realms/payslate`; `PAYSLATE_ISSUER_PORT` changes its host port. Its synthetic staff accounts are `officer-a` (employer `synthetic-a`), `officer-b` (employer `synthetic-b`), and `employee-a`; their fixture passwords are in `payslate-api/dev-issuer/payslate-realm.json` and are for local testing only. Sign in through the OIDC authorization-code flow, or use the development realm's direct grant to obtain a bearer token for API experiments. A bearer token must carry `employer_id` and a `PAYROLL_OFFICER` or `EMPLOYEE` realm role. Officers manage their own employer's employees and pay runs; an employee may read only their own payslip. All database lookups include the employer ID.
+
+The issuer starts more slowly than the API: wait until `http://localhost:8081/realms/payslate/.well-known/openid-configuration` answers before asking for a token. A token for `officer-a` from the development issuer (change the port if you set `PAYSLATE_ISSUER_PORT`); the `access_token` field of the response is the bearer token:
+
+```sh
+curl -s http://localhost:8081/realms/payslate/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=payslate-ui -d username=officer-a -d password=dev-only-a
+```
+
+Create a pay run with JSON `{"periodStart":"2026-02-23","periodEnd":"2026-03-01"}`. Only shifts wholly inside the inclusive dates are calculated. CSV may include a `public holiday` column with `true`/`false`, `yes`/`no`, or `1`/`0`; missing means false. An optional standing `deductions` amount on employee creation defaults to zero. If deductions exceed gross minus tax, calculation rejects the entire run with an error naming the employee.
 
 ## About this repository
 

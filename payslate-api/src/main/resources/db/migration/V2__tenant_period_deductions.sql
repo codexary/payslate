@@ -1,0 +1,11 @@
+ALTER TABLE employees ADD COLUMN employer_id VARCHAR(100) NOT NULL;
+ALTER TABLE employees ADD COLUMN deductions DECIMAL(16,2) NOT NULL DEFAULT 0;
+ALTER TABLE timesheets ADD COLUMN employer_id VARCHAR(100) NOT NULL;
+ALTER TABLE pay_runs ADD COLUMN employer_id VARCHAR(100) NOT NULL;
+ALTER TABLE pay_runs ADD COLUMN period_start DATE NOT NULL;
+ALTER TABLE pay_runs ADD COLUMN period_end DATE NOT NULL;
+ALTER TABLE payslips ADD COLUMN employer_id VARCHAR(100) NOT NULL;
+CREATE INDEX idx_employees_employer ON employees(employer_id);
+CREATE INDEX idx_timesheets_employer_period ON timesheets(employer_id, starts, ends);
+CREATE INDEX idx_pay_runs_employer ON pay_runs(employer_id);
+CREATE INDEX idx_payslips_employer_run ON payslips(employer_id, run_id);

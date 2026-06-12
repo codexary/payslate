@@ -15,7 +15,7 @@ import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 
 final class TimesheetCsv {
-  record Row(String employee, LocalDateTime start, LocalDateTime end) {}
+  record Row(String employee, LocalDateTime start, LocalDateTime end, boolean publicHoliday) {}
 
   private static final DateTimeFormatter AU =
       DateTimeFormatter.ofPattern("d/M/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT);
@@ -42,6 +42,7 @@ final class TimesheetCsv {
       int date = column(columns, "date", "shift date");
       int start = column(columns, "start", "start time");
       int end = column(columns, "end", "end time");
+      int holiday = optionalColumn(columns, "public holiday", "public_holiday", "holiday");
       var rows = new ArrayList<Row>();
       for (int i = 1; i < records.size(); i++) {
         var row = records.get(i);
@@ -55,7 +56,7 @@ final class TimesheetCsv {
         LocalDateTime to = day.atTime(time(row.get(end).trim()));
         if (to.isBefore(from)) to = to.plusDays(1);
         if (!to.isAfter(from)) throw new IllegalArgumentException("Empty shift");
-        rows.add(new Row(name, from, to));
+        rows.add(new Row(name, from, to, holiday >= 0 && holiday(row.get(holiday))));
       }
       if (rows.isEmpty()) throw new IllegalArgumentException("No shifts");
       return List.copyOf(rows);
@@ -67,6 +68,19 @@ final class TimesheetCsv {
   private static int column(Map<String, Integer> columns, String... aliases) {
     for (String alias : aliases) if (columns.containsKey(alias)) return columns.get(alias);
     throw new IllegalArgumentException("Missing CSV header");
+  }
+
+  private static int optionalColumn(Map<String, Integer> columns, String... aliases) {
+    for (String alias : aliases) if (columns.containsKey(alias)) return columns.get(alias);
+    return -1;
+  }
+
+  private static boolean holiday(String text) {
+    return switch (text.trim().toLowerCase(Locale.ROOT)) {
+      case "true", "yes", "1" -> true;
+      case "false", "no", "0", "" -> false;
+      default -> throw new IllegalArgumentException("Invalid public holiday value");
+    };
   }
 
   private static LocalDate date(String value) {

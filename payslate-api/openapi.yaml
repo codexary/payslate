@@ -2,6 +2,14 @@ openapi: 3.1.0
 info:
   title: Payslate Online API
   version: 1.0.0
+security:
+  - staffBearer: []
+components:
+  securitySchemes:
+    staffBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 paths:
   /v1/employees:
     post:
@@ -19,9 +27,34 @@ paths:
                 hourlyRate: {type: number}
                 bsb: {type: string}
                 account: {type: string}
+                deductions: {type: number, default: 0}
       responses:
-        '200': {description: Employee ID}
+        '200':
+          description: Employee ID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: integer, format: int64}
         '400': {description: Problem Details}
+  /v1/employees/{id}:
+    get:
+      operationId: getEmployee
+      responses:
+        '200':
+          description: Employee summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, name, employment, hourly_rate]
+                properties:
+                  id: {type: integer, format: int64}
+                  name: {type: string}
+                  employment: {type: string}
+                  hourly_rate: {type: number}
   /v1/timesheets:
     post:
       operationId: uploadTimesheets
@@ -35,30 +68,82 @@ paths:
               properties:
                 file: {type: string, format: binary}
       responses:
-        '200': {description: Imported row count}
+        '200':
+          description: Imported row count
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rows]
+                properties:
+                  rows: {type: integer}
         '400': {description: Problem Details}
   /v1/pay-runs:
     post:
       operationId: createPayRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [periodStart, periodEnd]
+              properties:
+                periodStart: {type: string, format: date}
+                periodEnd: {type: string, format: date}
       responses:
-        '200': {description: Pay run ID}
+        '200':
+          description: Pay run ID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: integer, format: int64}
   /v1/pay-runs/{id}:
     get:
       operationId: getPayRun
       responses:
-        '200': {description: State}
+        '200':
+          description: State
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state]
+                properties:
+                  state: {type: string}
   /v1/pay-runs/{id}/{event}:
     post:
       operationId: transitionPayRun
       description: event is calculate, approve, pay or reverse
       responses:
-        '200': {description: New state}
+        '200':
+          description: New state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state]
+                properties:
+                  state: {type: string}
         '409': {description: Invalid transition as Problem Details}
   /v1/pay-runs/{id}/payslips/{employeeId}:
     get:
       operationId: getPayslip
       responses:
-        '200': {description: Gross, tax and net}
+        '200':
+          description: Gross, tax and net
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [gross, tax, net]
+                properties:
+                  gross: {type: number}
+                  tax: {type: number}
+                  net: {type: number}
   /v1/pay-runs/{id}/aba:
     get:
       operationId: downloadAba

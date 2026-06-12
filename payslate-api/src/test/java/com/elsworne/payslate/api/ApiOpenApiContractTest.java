@@ -26,6 +26,6 @@ class ApiOpenApiContractTest {
             .filter(path -> path.startsWith("/v1/"))
             .collect(java.util.stream.Collectors.toSet());
     for (String path : implemented) assertThat(yaml).contains("  " + path + ":");
-    assertThat(implemented).hasSize(7);
+    assertThat(implemented).hasSize(8);
   }
 }

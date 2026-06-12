@@ -12,16 +12,30 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  issuer:
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: ["start-dev", "--import-realm", "--hostname=http://localhost:${PAYSLATE_ISSUER_PORT:-8081}"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${PAYSLATE_DEV_ISSUER_ADMIN:?Set PAYSLATE_DEV_ISSUER_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${PAYSLATE_DEV_ISSUER_PASSWORD:?Set PAYSLATE_DEV_ISSUER_PASSWORD}
+    volumes:
+      - ./payslate-api/dev-issuer:/opt/keycloak/data/import:ro
+    ports:
+      - "127.0.0.1:${PAYSLATE_ISSUER_PORT:-8081}:8080"
   api:
     build: ./payslate-api
     environment:
       PAYSLATE_DB_URL: jdbc:postgresql://database:5432/payslate
       PAYSLATE_DB_USER: ${PAYSLATE_DB_USER:?Set PAYSLATE_DB_USER}
       PAYSLATE_DB_PASSWORD: ${PAYSLATE_DB_PASSWORD:?Set PAYSLATE_DB_PASSWORD}
+      PAYSLATE_OIDC_ISSUER_URI: http://localhost:${PAYSLATE_ISSUER_PORT:-8081}/realms/payslate
+      PAYSLATE_OIDC_JWKS_URI: http://issuer:8080/realms/payslate/protocol/openid-connect/certs
     ports:
       - "127.0.0.1:${PAYSLATE_API_PORT:-8080}:8080"
     depends_on:
       database:
         condition: service_healthy
+      issuer:
+        condition: service_started
 volumes:
   pgdata:

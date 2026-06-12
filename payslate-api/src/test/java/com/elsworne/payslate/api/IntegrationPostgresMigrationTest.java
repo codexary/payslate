@@ -32,8 +32,21 @@ class IntegrationPostgresMigrationTest {
   void flywaySchemaStoresAnEmployeeAndPayRun() {
     assertThat(
             service.createEmployee(
-                "Docker Test", "PERMANENT", new java.math.BigDecimal("20"), "123-456", "12345678"))
+                "docker-employer",
+                "Docker Test",
+                "PERMANENT",
+                new java.math.BigDecimal("20"),
+                "123-456",
+                "12345678",
+                java.math.BigDecimal.ZERO))
         .isPositive();
-    assertThat(service.state(service.createRun())).isEqualTo("DRAFT");
+    assertThat(
+            service.state(
+                "docker-employer",
+                service.createRun(
+                    "docker-employer",
+                    java.time.LocalDate.of(2026, 2, 23),
+                    java.time.LocalDate.of(2026, 3, 1))))
+        .isEqualTo("DRAFT");
   }
 }

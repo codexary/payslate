@@ -1,4 +1,10 @@
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${PAYSLATE_OIDC_ISSUER_URI}
+          jwk-set-uri: ${PAYSLATE_OIDC_JWKS_URI}
   datasource:
     url: ${PAYSLATE_DB_URL}
     username: ${PAYSLATE_DB_USER}

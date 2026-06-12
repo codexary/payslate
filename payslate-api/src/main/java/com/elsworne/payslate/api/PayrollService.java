@@ -28,8 +28,16 @@ public class PayrollService {
 
   @Transactional
   public long createEmployee(
-      String name, String employment, BigDecimal rate, String bsb, String account) {
-    if (name == null
+      String employer,
+      String name,
+      String employment,
+      BigDecimal rate,
+      String bsb,
+      String account,
+      BigDecimal deductions) {
+    if (employer == null
+        || employer.isBlank()
+        || name == null
         || name.isBlank()
         || rate == null
         || rate.signum() < 0
@@ -37,78 +45,132 @@ public class PayrollService {
         || bsb == null
         || !bsb.matches("[0-9]{3}-[0-9]{3}")
         || account == null
-        || !account.matches("[0-9]{1,9}")) throw new IllegalArgumentException("Invalid employee");
+        || !account.matches("[0-9]{1,9}")
+        || deductions == null
+        || deductions.signum() < 0) throw new IllegalArgumentException("Invalid employee");
     return insert(
-        "INSERT INTO employees(name,employment,hourly_rate,bsb,account) VALUES(?,?,?,?,?)",
+        "INSERT INTO employees(employer_id,name,employment,hourly_rate,bsb,account,deductions) VALUES(?,?,?,?,?,?,?)",
+        employer,
         name,
         employment,
         rate,
         bsb,
-        account);
+        account,
+        deductions);
   }
 
   @Transactional
-  public int upload(String csv) {
+  public int upload(String employer, String csv) {
     var rows = TimesheetCsv.parse(csv);
     for (var row : rows) {
       var ids =
-          jdbc.queryForList("SELECT id FROM employees WHERE name = ?", Long.class, row.employee());
+          jdbc.queryForList(
+              "SELECT id FROM employees WHERE employer_id = ? AND name = ?",
+              Long.class,
+              employer,
+              row.employee());
       if (ids.size() != 1)
         throw new IllegalArgumentException("Employee name must match exactly one employee");
       jdbc.update(
-          "INSERT INTO timesheets(employee_id,starts,ends,public_holiday) VALUES(?,?,?,?)",
+          "INSERT INTO timesheets(employer_id,employee_id,starts,ends,public_holiday) VALUES(?,?,?,?,?)",
+          employer,
           ids.get(0),
           row.start(),
           row.end(),
-          false);
+          row.publicHoliday());
     }
     return rows.size();
   }
 
-  @Transactional
-  public long createRun() {
-    return insert(
-        "INSERT INTO pay_runs(state,created_at) VALUES(?,?)", "DRAFT", LocalDateTime.now());
+  public Map<String, Object> employee(String employer, long id) {
+    var employees =
+        jdbc.queryForList(
+            "SELECT id,name,employment,hourly_rate FROM employees WHERE employer_id = ? AND id = ?",
+            employer,
+            id);
+    if (employees.isEmpty()) throw new IllegalArgumentException("Unknown employee");
+    return employees.get(0);
   }
 
   @Transactional
-  public String transition(long id, PayRun.Event event) {
-    String current = state(id);
+  public long createRun(String employer, LocalDate start, LocalDate end) {
+    if (employer == null
+        || employer.isBlank()
+        || start == null
+        || end == null
+        || end.isBefore(start)) throw new IllegalArgumentException("Invalid pay period");
+    return insert(
+        "INSERT INTO pay_runs(employer_id,state,created_at,period_start,period_end) VALUES(?,?,?,?,?)",
+        employer,
+        "DRAFT",
+        LocalDateTime.now(),
+        start,
+        end);
+  }
+
+  @Transactional
+  public String transition(String employer, long id, PayRun.Event event) {
+    String current = state(employer, id);
     var model = PayRun.restore(PayRun.State.valueOf(current));
     model.apply(event);
-    if (event == PayRun.Event.CALCULATE) calculate(id);
-    jdbc.update("UPDATE pay_runs SET state = ? WHERE id = ?", model.state().name(), id);
+    if (event == PayRun.Event.CALCULATE) calculate(employer, id);
+    jdbc.update(
+        "UPDATE pay_runs SET state = ? WHERE id = ? AND employer_id = ?",
+        model.state().name(),
+        id,
+        employer);
     return model.state().name();
   }
 
-  public String state(long id) {
-    var states = jdbc.queryForList("SELECT state FROM pay_runs WHERE id = ?", String.class, id);
+  public String state(String employer, long id) {
+    var states =
+        jdbc.queryForList(
+            "SELECT state FROM pay_runs WHERE id = ? AND employer_id = ?",
+            String.class,
+            id,
+            employer);
     if (states.isEmpty()) throw new IllegalArgumentException("Unknown pay run");
     return states.get(0);
   }
 
-  private void calculate(long id) {
-    var employees = jdbc.queryForList("SELECT id,employment,hourly_rate FROM employees");
+  private void calculate(String employer, long id) {
+    var periods =
+        jdbc.queryForList(
+            "SELECT period_start,period_end FROM pay_runs WHERE id = ? AND employer_id = ?",
+            id,
+            employer);
+    if (periods.size() != 1) throw new IllegalArgumentException("Unknown pay run");
+    LocalDate start = ((java.sql.Date) periods.get(0).get("period_start")).toLocalDate();
+    LocalDate end = ((java.sql.Date) periods.get(0).get("period_end")).toLocalDate();
+    var employees =
+        jdbc.queryForList(
+            "SELECT id,name,employment,hourly_rate,deductions FROM employees WHERE employer_id = ?",
+            employer);
     for (Map<String, Object> employee : employees) {
       long employeeId = ((Number) employee.get("id")).longValue();
       var shifts =
           jdbc.query(
-              "SELECT starts,ends,public_holiday FROM timesheets WHERE employee_id = ?",
+              "SELECT starts,ends,public_holiday FROM timesheets WHERE employer_id = ? AND employee_id = ? AND starts >= ? AND ends <= ? ORDER BY starts",
               (rs, n) ->
                   new LegacyPayEngine.Shift(
                       rs.getTimestamp(1).toLocalDateTime(),
                       rs.getTimestamp(2).toLocalDateTime(),
                       rs.getBoolean(3)),
-              employeeId);
+              employer,
+              employeeId,
+              start.atStartOfDay(),
+              end.plusDays(1).atStartOfDay());
       if (shifts.isEmpty()) continue;
       var result =
           engine.calculate(
+              (String) employee.get("name"),
               (BigDecimal) employee.get("hourly_rate"),
               LegacyPayEngine.Employment.valueOf((String) employee.get("employment")),
               shifts,
-              BigDecimal.ZERO);
+              (BigDecimal) employee.get("deductions"));
       jdbc.update(
-          "INSERT INTO payslips(run_id,employee_id,gross,tax,net) VALUES(?,?,?,?,?)",
+          "INSERT INTO payslips(employer_id,run_id,employee_id,gross,tax,net) VALUES(?,?,?,?,?,?)",
+          employer,
           id,
           employeeId,
           result.gross(),
@@ -117,28 +179,32 @@ public class PayrollService {
     }
   }
 
-  public Map<String, Object> payslip(long runId, long employeeId) {
+  public Map<String, Object> payslip(String employer, long runId, long employeeId) {
+    state(employer, runId);
     var slips =
         jdbc.queryForList(
-            "SELECT gross,tax,net FROM payslips WHERE run_id = ? AND employee_id = ?",
+            "SELECT gross,tax,net FROM payslips WHERE employer_id = ? AND run_id = ? AND employee_id = ?",
+            employer,
             runId,
             employeeId);
     if (slips.isEmpty()) throw new IllegalArgumentException("Unknown payslip");
     return slips.get(0);
   }
 
-  public String aba(long runId) {
-    if (!state(runId).equals("PAID")) throw new IllegalStateException("Pay run is not paid");
+  public String aba(String employer, long runId) {
+    if (!state(employer, runId).equals("PAID"))
+      throw new IllegalStateException("Pay run is not paid");
     var payments = new ArrayList<AbaFile.Payment>();
     jdbc.query(
-        "SELECT e.bsb,e.account,e.name,e.id,p.net FROM payslips p JOIN employees e ON e.id=p.employee_id WHERE p.run_id=? ORDER BY e.id",
+        "SELECT e.bsb,e.account,e.name,p.net FROM payslips p JOIN employees e ON e.id=p.employee_id AND e.employer_id=p.employer_id WHERE p.employer_id=? AND p.run_id=? ORDER BY e.id",
         rs -> {
-          long cents = rs.getBigDecimal(5).movePointRight(2).longValueExact();
+          long cents = rs.getBigDecimal(4).movePointRight(2).longValueExact();
           if (cents > 0)
             payments.add(
                 new AbaFile.Payment(
                     rs.getString(1), rs.getString(2), rs.getString(3), "PAY " + runId, cents));
         },
+        employer,
         runId);
     return aba.write(
         new AbaFile.Batch(
