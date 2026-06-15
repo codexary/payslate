@@ -41,7 +41,7 @@ class SystemWholePayrollFlowTest {
             "file",
             "timesheet.csv",
             "text/csv",
-            "employee,date,start,end\nAlice Test,2026-02-23,09:00,17:00\n"
+            "employee,date,start,end,public holiday\nAlice Test,2026-02-23,09:00,17:00,true\nAlice Test,2026-03-02,09:00,17:00,false\n"
                 .getBytes(StandardCharsets.UTF_8));
     mvc.perform(multipart("/v1/timesheets").file(csv).with(officer())).andExpect(status().isOk());
     var run =
@@ -66,8 +66,52 @@ class SystemWholePayrollFlowTest {
             .andReturn()
             .getResponse()
             .getContentAsString();
-    assertThat(new AbaFile().parse(aba).payments()).hasSize(1);
-    assertThat(new AbaFile().parse(aba).payments().get(0).name()).isEqualTo("Alice Test");
+    var batch = new AbaFile().parse(aba);
+    assertThat(batch.payments()).hasSize(1);
+    assertThat(batch.payments().get(0).name()).isEqualTo("Alice Test");
+    assertThat(batch.payments().get(0).cents()).isEqualTo(36_000L);
+    String trailer = aba.split("\r\n")[3];
+    assertThat(trailer.substring(20, 30)).isEqualTo("0000000000");
+    assertThat(trailer.substring(30, 40)).isEqualTo("0000036000");
+    assertThat(trailer.substring(40, 50)).isEqualTo("0000036000");
+  }
+
+  @Test
+  void excessiveDeductionsRejectEntirePayRunAndNameEmployee() throws Exception {
+    mvc.perform(
+            post("/v1/employees")
+                .with(officer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"name\":\"Excess Test\",\"employment\":\"PERMANENT\",\"hourlyRate\":20,\"bsb\":\"123-456\",\"account\":\"12345678\",\"deductions\":1000}"))
+        .andExpect(status().isOk());
+    var csv =
+        new MockMultipartFile(
+            "file",
+            "excess.csv",
+            "text/csv",
+            "employee,date,start,end\nExcess Test,2026-03-09,09:00,10:00\n"
+                .getBytes(StandardCharsets.UTF_8));
+    mvc.perform(multipart("/v1/timesheets").file(csv).with(officer())).andExpect(status().isOk());
+    var run =
+        mvc.perform(
+                post("/v1/pay-runs")
+                    .with(officer())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"periodStart\":\"2026-03-09\",\"periodEnd\":\"2026-03-15\"}"))
+            .andExpect(status().isOk())
+            .andReturn();
+    long runId = id(run.getResponse().getContentAsString());
+    var rejected =
+        mvc.perform(post("/v1/pay-runs/" + runId + "/calculate").with(officer()))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertThat(rejected.getResponse().getContentAsString()).contains("Excess Test");
+    var state =
+        mvc.perform(get("/v1/pay-runs/" + runId).with(officer()))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertThat(state.getResponse().getContentAsString()).contains("DRAFT");
   }
 
   private static RequestPostProcessor officer() {

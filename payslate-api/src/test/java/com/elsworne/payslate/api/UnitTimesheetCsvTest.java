@@ -22,6 +22,21 @@ class UnitTimesheetCsvTest {
   }
 
   @Test
+  void parsesPublicHolidayColumn() {
+    var rows =
+        TimesheetCsv.parse(
+            "employee,date,start,end,public holiday\nAlice Test,2026-02-23,09:00,17:00,yes\n");
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).publicHoliday()).isTrue();
+    assertThatThrownBy(
+            () ->
+                TimesheetCsv.parse(
+                    "employee,date,start,end,public holiday\nAlice Test,2026-02-23,09:00,17:00,maybe\n"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid public holiday value");
+  }
+
+  @Test
   void rejectsMissingHeaderAndEmptyShift() {
     assertThatThrownBy(
             () -> TimesheetCsv.parse("person,date,start,end\nAlice,2026-02-23,09:00,10:00"))
