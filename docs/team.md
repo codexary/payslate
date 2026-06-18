@@ -1,3 +1,5 @@
+English | [简体中文](team.zh-CN.md)
+
 # Payslate Online team
 
 Elsworne has many other people. Some members of this product team come from shared company teams.

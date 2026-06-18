@@ -1,3 +1,5 @@
+[English](team.md) | 简体中文
+
 # Payslate Online 团队
 
 Elsworne 还有许多未列出的员工；部分成员来自公司共享团队。
