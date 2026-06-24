@@ -20,6 +20,36 @@ class PayEnginePropertiesTest {
   private final com.elsworne.payslate.legacy.LegacyPayEngine old =
       new com.elsworne.payslate.legacy.LegacyPayEngine();
 
+  @Test
+  void autumnClockChangePaysNineElapsedHours() {
+    var result =
+        current.calculate(
+            new BigDecimal("20"),
+            Employment.PERMANENT,
+            List.of(
+                new Shift(
+                    LocalDateTime.of(2023, 4, 2, 1, 0), LocalDateTime.of(2023, 4, 2, 9, 0), false)),
+            BigDecimal.ZERO);
+    assertThat(result.ordinaryHours().add(result.overtimeHours())).isEqualTo("9.0000");
+    assertThat(result.gross()).isEqualTo("270.00");
+  }
+
+  @Test
+  void springClockChangePaysSevenElapsedHours() {
+    var result =
+        current.calculate(
+            new BigDecimal("20"),
+            Employment.PERMANENT,
+            List.of(
+                new Shift(
+                    LocalDateTime.of(2023, 10, 1, 1, 0),
+                    LocalDateTime.of(2023, 10, 1, 9, 0),
+                    false)),
+            BigDecimal.ZERO);
+    assertThat(result.ordinaryHours().add(result.overtimeHours())).isEqualTo("7.0000");
+    assertThat(result.gross()).isEqualTo("210.00");
+  }
+
   @Property(tries = 100)
   void parallelRunOracle(
       @ForAll @IntRange(min = 1, max = 500) int rate,

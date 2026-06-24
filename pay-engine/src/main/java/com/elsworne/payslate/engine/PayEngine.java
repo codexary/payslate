@@ -5,14 +5,22 @@ import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-/** Refactored calculation path, compared with the frozen engine over generated cases. */
+/**
+ * Calculates pay for elapsed time in a configured zone, retaining local dates for pay rules.
+ *
+ * <p>Local shift endpoints follow {@link java.time.LocalDateTime#atZone(ZoneId)}: an overlap
+ * selects the earlier offset, and a time in a gap moves forward by the gap length. Local times
+ * alone cannot identify the later occurrence of an overlapping time.
+ */
 public final class PayEngine {
   public record Result(
       BigDecimal gross,
@@ -25,6 +33,18 @@ public final class PayEngine {
       BigDecimal overtimeHours) {}
 
   private static final BigDecimal MINUTES_PER_HOUR = new BigDecimal("60");
+
+  private final ZoneId zone;
+
+  /** Uses Australia/Melbourne for local shift times. */
+  public PayEngine() {
+    this(ZoneId.of("Australia/Melbourne"));
+  }
+
+  /** Uses the supplied zone to resolve local shift endpoints and apply local calendar rules. */
+  public PayEngine(ZoneId zone) {
+    this.zone = Objects.requireNonNull(zone, "zone");
+  }
 
   public Result calculate(
       BigDecimal hourlyRate,
@@ -58,7 +78,7 @@ public final class PayEngine {
     BigDecimal weighted = BigDecimal.ZERO;
     for (var shift : ordered) {
       int minutes = paidMinutes(shift, employment);
-      LocalDateTime clock = shift.start();
+      ZonedDateTime clock = shift.start().atZone(zone);
       for (int m = 0; m < minutes; m++, clock = clock.plusMinutes(1)) {
         LocalDate date = clock.toLocalDate();
         int dayMinutes = daily.getOrDefault(date, 0);
@@ -127,13 +147,13 @@ public final class PayEngine {
     }
   }
 
-  private static int paidMinutes(
-      LegacyPayEngine.Shift shift, LegacyPayEngine.Employment employment) {
-    if (shift == null
-        || shift.start() == null
-        || shift.end() == null
-        || !shift.end().isAfter(shift.start())) throw new IllegalArgumentException("Invalid shift");
-    long minutes = Duration.between(shift.start(), shift.end()).toMinutes();
+  private int paidMinutes(LegacyPayEngine.Shift shift, LegacyPayEngine.Employment employment) {
+    if (shift == null || shift.start() == null || shift.end() == null)
+      throw new IllegalArgumentException("Invalid shift");
+    long minutes =
+        Duration.between(
+                shift.start().atZone(zone).toInstant(), shift.end().atZone(zone).toInstant())
+            .toMinutes();
     if (minutes < 1 || minutes > 1440)
       throw new IllegalArgumentException("Shift must be 1 minute to 24 hours");
     return (int)

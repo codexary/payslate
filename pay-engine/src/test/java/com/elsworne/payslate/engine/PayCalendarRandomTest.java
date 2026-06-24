@@ -1,6 +1,7 @@
 package com.elsworne.payslate.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -24,6 +25,8 @@ class PayCalendarRandomTest {
     System.out.printf("calendar seed=%d trials=%d%n", SEED, TRIALS);
     SplittableRandom random = new SplittableRandom(SEED);
     PayEngine engine = new PayEngine();
+    int csvPolicyCases = 0;
+    int csvPolicyRejections = 0;
     for (int i = 0; i < TRIALS; i++) {
       int year = random.nextInt(2019, 2031);
       PayCalendar.Frequency frequency =
@@ -62,20 +65,48 @@ class PayCalendarRandomTest {
       }
 
       long expectedMinutes = Duration.between(start.toInstant(), end.toInstant()).toMinutes();
+      // CSV cannot preserve a later overlap offset. Check the specified resolution policy
+      // separately, without changing the random draws or claiming a raw-instant match.
+      var csvStart = start.toLocalDateTime().atZone(MELBOURNE);
+      var csvEnd = end.toLocalDateTime().atZone(MELBOURNE);
+      if (!csvStart.toInstant().equals(start.toInstant())
+          || !csvEnd.toInstant().equals(end.toInstant())) {
+        csvPolicyCases++;
+        expectedMinutes = Duration.between(csvStart.toInstant(), csvEnd.toInstant()).toMinutes();
+      }
+      var shifts =
+          List.of(new LegacyPayEngine.Shift(start.toLocalDateTime(), end.toLocalDateTime(), false));
+      if (expectedMinutes < 1) {
+        csvPolicyRejections++;
+        assertThatThrownBy(
+                () ->
+                    engine.calculate(
+                        new BigDecimal("20"),
+                        LegacyPayEngine.Employment.PERMANENT,
+                        shifts,
+                        BigDecimal.ZERO))
+            .as(context)
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Shift must be 1 minute to 24 hours");
+        continue;
+      }
       BigDecimal expectedHours =
           BigDecimal.valueOf(expectedMinutes)
               .divide(new BigDecimal("60"), 4, RoundingMode.HALF_EVEN);
       var result =
           engine.calculate(
-              new BigDecimal("20"),
-              LegacyPayEngine.Employment.PERMANENT,
-              List.of(
-                  new LegacyPayEngine.Shift(start.toLocalDateTime(), end.toLocalDateTime(), false)),
-              BigDecimal.ZERO);
+              new BigDecimal("20"), LegacyPayEngine.Employment.PERMANENT, shifts, BigDecimal.ZERO);
       assertThat(result.ordinaryHours().add(result.overtimeHours()))
           .as(context)
           .isEqualByComparingTo(expectedHours);
     }
+    System.out.printf(
+        "current raw-instant matches=%d/%d csv-policy cases=%d (paid=%d rejected=%d)%n",
+        TRIALS - csvPolicyCases,
+        TRIALS,
+        csvPolicyCases,
+        csvPolicyCases - csvPolicyRejections,
+        csvPolicyRejections);
   }
 
   private static LocalDate transitionDay(int year, boolean spring) {
