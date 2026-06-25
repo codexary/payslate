@@ -25,6 +25,15 @@ class PayCalendarRandomTest {
     System.out.printf("calendar seed=%d trials=%d%n", SEED, TRIALS);
     SplittableRandom random = new SplittableRandom(SEED);
     PayEngine engine = new PayEngine();
+    var legacy = new com.elsworne.payslate.legacy.LegacyPayEngine();
+    int legacyDisagreements = 0;
+    int legacyRejections = 0;
+    int[] frequencyTrials = new int[PayCalendar.Frequency.values().length];
+    int[] frequencyDisagreements = new int[frequencyTrials.length];
+    int transitionTrials = 0;
+    int transitionDisagreements = 0;
+    int offsetCrossings = 0;
+    int disagreementCrossings = 0;
     int csvPolicyCases = 0;
     int csvPolicyRejections = 0;
     for (int i = 0; i < TRIALS; i++) {
@@ -65,6 +74,40 @@ class PayCalendarRandomTest {
       }
 
       long expectedMinutes = Duration.between(start.toInstant(), end.toInstant()).toMinutes();
+      frequencyTrials[frequency.ordinal()]++;
+      boolean transitionStart =
+          day.equals(transitionDay(year, true)) || day.equals(transitionDay(year, false));
+      if (transitionStart) transitionTrials++;
+      boolean crossesOffset = !start.getOffset().equals(end.getOffset());
+      if (crossesOffset) offsetCrossings++;
+      boolean disagrees;
+      try {
+        var inherited =
+            legacy.calculate(
+                new BigDecimal("20"),
+                com.elsworne.payslate.legacy.LegacyPayEngine.Employment.PERMANENT,
+                List.of(
+                    new com.elsworne.payslate.legacy.LegacyPayEngine.Shift(
+                        start.toLocalDateTime(), end.toLocalDateTime(), false)));
+        BigDecimal inheritedHours = inherited.ordinaryHours().add(inherited.overtimeHours());
+        disagrees =
+            inheritedHours
+                    .multiply(new BigDecimal("60"))
+                    .compareTo(BigDecimal.valueOf(expectedMinutes))
+                != 0;
+      } catch (IllegalArgumentException exception) {
+        // The raw elapsed shift is positive, but CSV can collapse its endpoints to one time.
+        assertThat(start.toLocalDateTime()).as(context).isEqualTo(end.toLocalDateTime());
+        assertThat(exception).as(context).hasMessage("Invalid shift");
+        legacyRejections++;
+        disagrees = true;
+      }
+      if (disagrees) {
+        legacyDisagreements++;
+        frequencyDisagreements[frequency.ordinal()]++;
+        if (transitionStart) transitionDisagreements++;
+        if (crossesOffset) disagreementCrossings++;
+      }
       // CSV cannot preserve a later overlap offset. Check the specified resolution policy
       // separately, without changing the random draws or claiming a raw-instant match.
       var csvStart = start.toLocalDateTime().atZone(MELBOURNE);
@@ -107,6 +150,52 @@ class PayCalendarRandomTest {
         csvPolicyCases,
         csvPolicyCases - csvPolicyRejections,
         csvPolicyRejections);
+    System.out.printf(
+        "legacy raw-oracle disagreements=%d/%d (paid-hours=%d rejected=%d)%n",
+        legacyDisagreements, TRIALS, legacyDisagreements - legacyRejections, legacyRejections);
+    for (var frequency : PayCalendar.Frequency.values()) {
+      System.out.printf(
+          "%s legacy disagreements=%d/%d%n",
+          frequency,
+          frequencyDisagreements[frequency.ordinal()],
+          frequencyTrials[frequency.ordinal()]);
+    }
+    System.out.printf(
+        "transition-day legacy disagreements=%d/%d other-day legacy disagreements=%d/%d%n",
+        transitionDisagreements,
+        transitionTrials,
+        legacyDisagreements - transitionDisagreements,
+        TRIALS - transitionTrials);
+    System.out.printf(
+        "offset crossings=%d/%d legacy disagreement crossings=%d/%d%n",
+        offsetCrossings, TRIALS, disagreementCrossings, legacyDisagreements);
+    assertThat(legacyDisagreements).isPositive();
+    assertThat(disagreementCrossings).isEqualTo(legacyDisagreements);
+    assertThat(offsetCrossings).isEqualTo(legacyDisagreements);
+  }
+
+  @Test
+  void formulaAgreesWithSeededSimulation() {
+    double p = 0.01;
+    double confidence = 0.95;
+    int needed = (int) Math.ceil(Math.log1p(-confidence) / Math.log1p(-p));
+    double formula = 1 - Math.pow(1 - p, needed);
+    SplittableRandom random = new SplittableRandom(SEED + 1);
+    int detected = 0;
+    int campaigns = 10_000;
+    for (int campaign = 0; campaign < campaigns; campaign++) {
+      boolean found = false;
+      for (int trial = 0; trial < needed; trial++) {
+        if (random.nextDouble() < p) found = true;
+      }
+      if (found) detected++;
+    }
+    double observed = (double) detected / campaigns;
+    System.out.printf(
+        "simulation seed=%d p=%.4f confidence=%.2f n=%d formula=%.6f detected=%d/%d observed=%.4f%n",
+        SEED + 1, p, confidence, needed, formula, detected, campaigns, observed);
+    assertThat(needed).isEqualTo(299);
+    assertThat(observed).isCloseTo(formula, org.assertj.core.data.Offset.offset(0.015));
   }
 
   private static LocalDate transitionDay(int year, boolean spring) {
