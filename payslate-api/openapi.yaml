@@ -114,6 +114,33 @@ paths:
                 required: [state]
                 properties:
                   state: {type: string}
+  /v1/pay-runs/calendar:
+    post:
+      operationId: createCalendarPayRun
+      description: Derives an inclusive stored period from a calendar pay date. Weekly and fortnightly dates follow the anchor; monthly dates are month ends.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [frequency, anchorPayDate, payDate]
+              properties:
+                frequency: {type: string, enum: [WEEKLY, FORTNIGHTLY, MONTHLY]}
+                anchorPayDate: {type: string, format: date}
+                payDate: {type: string, format: date}
+      responses:
+        '200':
+          description: Pay run ID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: integer, format: int64}
+        '400':
+          description: Invalid calendar input or pay date outside the calendar
   /v1/pay-runs/{id}/{event}:
     post:
       operationId: transitionPayRun

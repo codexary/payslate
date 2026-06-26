@@ -30,6 +30,7 @@ services:
       PAYSLATE_DB_PASSWORD: ${PAYSLATE_DB_PASSWORD:?Set PAYSLATE_DB_PASSWORD}
       PAYSLATE_OIDC_ISSUER_URI: http://localhost:${PAYSLATE_ISSUER_PORT:-8081}/realms/payslate
       PAYSLATE_OIDC_JWKS_URI: http://issuer:8080/realms/payslate/protocol/openid-connect/certs
+      PAYSLATE_TIME_ZONE: ${PAYSLATE_TIME_ZONE:-Australia/Melbourne}
     ports:
       - "127.0.0.1:${PAYSLATE_API_PORT:-8080}:8080"
     depends_on:

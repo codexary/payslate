@@ -27,3 +27,5 @@ logging:
   structured:
     format:
       console: ecs
+payslate:
+  time-zone: ${PAYSLATE_TIME_ZONE:Australia/Melbourne}

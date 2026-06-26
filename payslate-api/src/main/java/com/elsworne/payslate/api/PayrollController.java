@@ -1,5 +1,6 @@
 package com.elsworne.payslate.api;
 
+import com.elsworne.payslate.engine.PayCalendar;
 import com.elsworne.payslate.engine.payrun.PayRun.Event;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,6 +32,9 @@ public class PayrollController {
       BigDecimal deductions) {}
 
   public record RunInput(LocalDate periodStart, LocalDate periodEnd) {}
+
+  public record CalendarRunInput(
+      PayCalendar.Frequency frequency, LocalDate anchorPayDate, LocalDate payDate) {}
 
   private final PayrollService service;
 
@@ -71,6 +75,15 @@ public class PayrollController {
   @PostMapping("/pay-runs")
   public Map<String, Long> run(@AuthenticationPrincipal Jwt jwt, @RequestBody RunInput input) {
     return Map.of("id", service.createRun(employer(jwt), input.periodStart(), input.periodEnd()));
+  }
+
+  @PostMapping("/pay-runs/calendar")
+  public Map<String, Long> calendarRun(
+      @AuthenticationPrincipal Jwt jwt, @RequestBody CalendarRunInput input) {
+    return Map.of(
+        "id",
+        service.createCalendarRun(
+            employer(jwt), input.frequency(), input.anchorPayDate(), input.payDate()));
   }
 
   @GetMapping("/pay-runs/{id}")

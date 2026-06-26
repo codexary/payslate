@@ -44,6 +44,10 @@ curl -s http://localhost:8081/realms/payslate/protocol/openid-connect/token \
 
 Create a pay run with JSON `{"periodStart":"2026-02-23","periodEnd":"2026-03-01"}`. Only shifts wholly inside the inclusive dates are calculated. CSV may include a `public holiday` column with `true`/`false`, `yes`/`no`, or `1`/`0`; missing means false. An optional standing `deductions` amount on employee creation defaults to zero. If deductions exceed gross minus tax, calculation rejects the entire run with an error naming the employee.
 
+Create a calendar pay run at `POST /v1/pay-runs/calendar` with `{"frequency":"WEEKLY","anchorPayDate":"2026-03-01","payDate":"2026-03-01"}`. The API stores the inclusive period 2026-02-23 through 2026-03-01; 2026-03-02 is not on that calendar and is rejected. Frequencies are `WEEKLY`, `FORTNIGHTLY` and `MONTHLY`; monthly periods are calendar months paid on their last day.
+
+The service constructs its pay engine using `payslate.time-zone`, defaulting to `Australia/Melbourne`; set `PAYSLATE_TIME_ZONE` or override the Spring property to select another zone. Payroll pays elapsed time in this single configured zone, while date, weekday and week rules use local time. Ambiguous local times use the earlier offset, and skipped local times move forward through the gap. CSV cannot distinguish the later occurrence of a repeated hour. Per-employer zones remain an open decision.
+
 ## About this repository
 
 Elsworne, Payslate and the team are fictional.

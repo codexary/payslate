@@ -2,15 +2,18 @@ package com.elsworne.payslate.api;
 
 import com.elsworne.payslate.bank.AbaFile;
 import com.elsworne.payslate.engine.LegacyPayEngine;
+import com.elsworne.payslate.engine.PayCalendar;
 import com.elsworne.payslate.engine.PayEngine;
 import com.elsworne.payslate.engine.payrun.PayRun;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
@@ -19,11 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PayrollService {
   private final JdbcTemplate jdbc;
-  private final PayEngine engine = new PayEngine();
+  private final PayEngine engine;
   private final AbaFile aba = new AbaFile();
 
-  PayrollService(JdbcTemplate jdbc) {
+  PayrollService(
+      JdbcTemplate jdbc, @Value("${payslate.time-zone:Australia/Melbourne}") String timeZone) {
     this.jdbc = jdbc;
+    this.engine = new PayEngine(ZoneId.of(timeZone));
   }
 
   @Transactional
@@ -106,6 +111,21 @@ public class PayrollService {
         LocalDateTime.now(),
         start,
         end);
+  }
+
+  @Transactional
+  public long createCalendarRun(
+      String employer,
+      PayCalendar.Frequency frequency,
+      LocalDate anchorPayDate,
+      LocalDate payDate) {
+    if (payDate == null) throw new IllegalArgumentException("Invalid pay date");
+    var period =
+        PayCalendar.periodsForYear(frequency, anchorPayDate, payDate.getYear()).stream()
+            .filter(candidate -> candidate.payDate().equals(payDate))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Pay date is not on the calendar"));
+    return createRun(employer, period.startInclusive(), period.endExclusive().minusDays(1));
   }
 
   @Transactional

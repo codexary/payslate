@@ -68,6 +68,15 @@ class ApiOpenApiContractTest {
         Set.of("id"));
     assertSchema(
         paths,
+        "/v1/pay-runs/calendar",
+        "post",
+        true,
+        "application/json",
+        Set.of("frequency", "anchorPayDate", "payDate"),
+        "application/json",
+        Set.of("id"));
+    assertSchema(
+        paths,
         "/v1/pay-runs/{id}",
         "get",
         false,

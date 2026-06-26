@@ -44,6 +44,10 @@ curl -s http://localhost:8081/realms/payslate/protocol/openid-connect/token \
 
 创建工资批次时提交 JSON `{"periodStart":"2026-02-23","periodEnd":"2026-03-01"}`；只有完整落在这组含首尾日期的区间内的班次会被计算。CSV 可包含 `public holiday` 列，接受 `true`/`false`、`yes`/`no` 或 `1`/`0`，缺省为 false。创建员工时可填固定 `deductions` 金额，缺省为零。扣款超过总工资减税时，整个批次会被拒绝，错误会指出员工。
 
+向 `POST /v1/pay-runs/calendar` 提交 `{"frequency":"WEEKLY","anchorPayDate":"2026-03-01","payDate":"2026-03-01"}` 可创建日历工资批次。API 保存含首尾日期的 2026-02-23 至 2026-03-01 期间；2026-03-02 不在该日历上，会被拒绝。频率为 `WEEKLY`、`FORTNIGHTLY` 或 `MONTHLY`；每月期间对应自然月，在月末发薪。
+
+服务使用 `payslate.time-zone` 构造工资引擎，默认为 `Australia/Melbourne`；可设置 `PAYSLATE_TIME_ZONE` 或覆盖 Spring 属性选择其他时区。工资按这个统一配置时区中的实际经过时间计算，日期、星期和周规则仍使用本地时间。重叠的本地时间选择较早的偏移，不存在的时间向前移动经过空缺。CSV 无法区分重复小时的后一次出现。每雇主独立时区仍是待定事项。
+
 ## 关于本仓库
 
 Elsworne、Payslate 和团队成员均为虚构。
