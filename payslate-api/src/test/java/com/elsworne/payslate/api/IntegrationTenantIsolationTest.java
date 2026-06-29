@@ -1,29 +1,37 @@
 package com.elsworne.payslate.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.elsworne.payslate.engine.payrun.PayRun.Event;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @Tag("docker")
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 class IntegrationTenantIsolationTest {
   static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18.1");
 
@@ -39,6 +47,7 @@ class IntegrationTenantIsolationTest {
   }
 
   @Autowired MockMvc mvc;
+  @Autowired PayrollService service;
 
   @Test
   void oneEmployerCannotReadAnotherEmployersEmployeesOrPayRuns() throws Exception {
@@ -53,7 +62,7 @@ class IntegrationTenantIsolationTest {
             .andReturn();
     long employeeId = id(created.getResponse().getContentAsString());
     mvc.perform(get("/v1/employees/" + employeeId).with(officer("tenant-b")))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isNotFound());
     mvc.perform(get("/v1/employees/" + employeeId).with(officer("tenant-a")))
         .andExpect(status().isOk());
 
@@ -79,11 +88,13 @@ class IntegrationTenantIsolationTest {
             .andReturn();
     long runId = id(createdRun.getResponse().getContentAsString());
     mvc.perform(get("/v1/pay-runs/" + runId).with(officer("tenant-b")))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isNotFound());
+    mvc.perform(post("/v1/pay-runs/" + runId + "/approve").with(officer("tenant-b")))
+        .andExpect(status().isNotFound());
     mvc.perform(post("/v1/pay-runs/" + runId + "/calculate").with(officer("tenant-a")))
         .andExpect(status().isOk());
     mvc.perform(get("/v1/pay-runs/" + runId + "/payslips/" + employeeId).with(officer("tenant-b")))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isNotFound());
     mvc.perform(
             get("/v1/pay-runs/" + runId + "/payslips/" + employeeId)
                 .with(employee("tenant-a", "999")))
@@ -99,6 +110,84 @@ class IntegrationTenantIsolationTest {
                 .content("{\"periodStart\":\"2026-02-23\",\"periodEnd\":\"2026-03-01\"}"))
         .andExpect(status().isForbidden());
     mvc.perform(get("/v1/pay-runs/" + runId)).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void anotherEmployersRecordAndAMissingRecordGiveIdenticalResponses() throws Exception {
+    var records = setUpRecords();
+    String employeePath = "/v1/employees/" + records.employeeId();
+    String runPath = "/v1/pay-runs/" + records.runId();
+    String slipPath = runPath + "/payslips/" + records.employeeId();
+    String missingRunPath = "/v1/pay-runs/" + Long.MAX_VALUE;
+
+    assertSameNotFound(employeePath, "/v1/employees/" + Long.MAX_VALUE);
+    assertSameNotFound(runPath, missingRunPath);
+    assertSameNotFound(slipPath, missingRunPath + "/payslips/" + records.employeeId());
+    assertSameNotFound(runPath + "/aba", missingRunPath + "/aba");
+
+    // A visible run also hides whether its employee or payslip is missing.
+    assertSameNotFound(
+        slipPath, "/v1/pay-runs/" + records.ownRunId() + "/payslips/" + Long.MAX_VALUE);
+    assertSameNotFound(
+        slipPath, "/v1/pay-runs/" + records.ownRunId() + "/payslips/" + records.ownEmployeeId());
+  }
+
+  private Records setUpRecords() {
+    long employeeId =
+        service.createEmployee(
+            "tenant-a",
+            "Alice Test",
+            "PERMANENT",
+            new BigDecimal("20"),
+            "123-456",
+            "12345678",
+            BigDecimal.ZERO);
+    service.upload("tenant-a", "employee,date,start,end\nAlice Test,2026-02-23,09:00,17:00\n");
+    long runId = service.createRun("tenant-a", LocalDate.of(2026, 2, 23), LocalDate.of(2026, 3, 1));
+    for (var event : new Event[] {Event.CALCULATE, Event.APPROVE, Event.PAY})
+      service.transition("tenant-a", runId, event);
+    long ownEmployeeId =
+        service.createEmployee(
+            "tenant-b",
+            "Bob Test",
+            "PERMANENT",
+            new BigDecimal("20"),
+            "123-456",
+            "12345678",
+            BigDecimal.ZERO);
+    long ownRunId =
+        service.createRun("tenant-b", LocalDate.of(2026, 2, 23), LocalDate.of(2026, 3, 1));
+    return new Records(employeeId, runId, ownEmployeeId, ownRunId);
+  }
+
+  private record Records(long employeeId, long runId, long ownEmployeeId, long ownRunId) {}
+
+  private void assertSameNotFound(String foreignPath, String missingPath) throws Exception {
+    mvc.perform(get(foreignPath).with(officer("tenant-a"))).andExpect(status().isOk());
+    mvc.perform(get(foreignPath)).andExpect(status().isUnauthorized());
+    mvc.perform(get(foreignPath).with(jwt().authorities(new SimpleGrantedAuthority("ROLE_VIEWER"))))
+        .andExpect(status().isForbidden());
+    var foreign = mvc.perform(get(foreignPath).with(officer("tenant-b"))).andReturn().getResponse();
+    var missing = mvc.perform(get(missingPath).with(officer("tenant-b"))).andReturn().getResponse();
+    assertAll(
+        () -> assertThat(foreign.getStatus()).as("cross-employer status").isEqualTo(404),
+        () -> assertThat(missing.getStatus()).as("missing-record status").isEqualTo(404),
+        () -> assertThat(foreign.getStatus()).isEqualTo(missing.getStatus()),
+        () -> assertThat(foreign.getContentType()).isEqualTo("application/problem+json"),
+        () -> assertThat(foreign.getContentType()).isEqualTo(missing.getContentType()),
+        () ->
+            assertThat(normalizedBody(foreign, foreignPath))
+                .containsExactly(normalizedBody(missing, missingPath)));
+  }
+
+  private static byte[] normalizedBody(MockHttpServletResponse response, String path)
+      throws Exception {
+    // Only instance varies per request: Spring sets it to the request URI.
+    // Replace its value in the raw body; preserve every other byte, including whitespace and order.
+    String body = response.getContentAsString(StandardCharsets.UTF_8);
+    String instance = "\"instance\":\"" + path + "\"";
+    assertThat(body).containsOnlyOnce(instance);
+    return body.replace(instance, "\"instance\":\"\"").getBytes(StandardCharsets.UTF_8);
   }
 
   private static RequestPostProcessor officer(String employer) {
