@@ -93,7 +93,7 @@ public class PayrollService {
             "SELECT id,name,employment,hourly_rate FROM employees WHERE employer_id = ? AND id = ?",
             employer,
             id);
-    if (employees.isEmpty()) throw new IllegalArgumentException("Unknown employee");
+    if (employees.isEmpty()) throw new RecordNotFoundException();
     return employees.get(0);
   }
 
@@ -149,7 +149,7 @@ public class PayrollService {
             String.class,
             id,
             employer);
-    if (states.isEmpty()) throw new IllegalArgumentException("Unknown pay run");
+    if (states.isEmpty()) throw new RecordNotFoundException();
     return states.get(0);
   }
 
@@ -159,7 +159,7 @@ public class PayrollService {
             "SELECT period_start,period_end FROM pay_runs WHERE id = ? AND employer_id = ?",
             id,
             employer);
-    if (periods.size() != 1) throw new IllegalArgumentException("Unknown pay run");
+    if (periods.size() != 1) throw new RecordNotFoundException();
     LocalDate start = ((java.sql.Date) periods.get(0).get("period_start")).toLocalDate();
     LocalDate end = ((java.sql.Date) periods.get(0).get("period_end")).toLocalDate();
     var employees =
@@ -207,7 +207,7 @@ public class PayrollService {
             employer,
             runId,
             employeeId);
-    if (slips.isEmpty()) throw new IllegalArgumentException("Unknown payslip");
+    if (slips.isEmpty()) throw new RecordNotFoundException();
     return slips.get(0);
   }
 

@@ -7,6 +7,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 class ApiErrors {
+  @ExceptionHandler(RecordNotFoundException.class)
+  ProblemDetail notFound(RecordNotFoundException error) {
+    var detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, error.getMessage());
+    detail.setTitle("Not found");
+    return detail;
+  }
+
   @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
   ProblemDetail badRequest(RuntimeException error) {
     var detail =
