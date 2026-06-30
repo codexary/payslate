@@ -1,11 +1,14 @@
 package com.elsworne.payslate.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.elsworne.payslate.engine.payrun.PayRun.Event;
@@ -17,13 +20,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -98,7 +104,8 @@ class IntegrationTenantIsolationTest {
     mvc.perform(
             get("/v1/pay-runs/" + runId + "/payslips/" + employeeId)
                 .with(employee("tenant-a", "999")))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(securityProblem(403, "Forbidden", "Access is denied."));
     mvc.perform(
             get("/v1/pay-runs/" + runId + "/payslips/" + employeeId)
                 .with(employee("tenant-a", Long.toString(employeeId))))
@@ -108,8 +115,12 @@ class IntegrationTenantIsolationTest {
                 .with(employee("tenant-a", Long.toString(employeeId)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"periodStart\":\"2026-02-23\",\"periodEnd\":\"2026-03-01\"}"))
-        .andExpect(status().isForbidden());
-    mvc.perform(get("/v1/pay-runs/" + runId)).andExpect(status().isUnauthorized());
+        .andExpect(status().isForbidden())
+        .andExpect(securityProblem(403, "Forbidden", "Access is denied."));
+    mvc.perform(get("/v1/pay-runs/" + runId))
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
+        .andExpect(securityProblem(401, "Unauthorized", "Authentication is required."));
   }
 
   @Test
@@ -164,9 +175,13 @@ class IntegrationTenantIsolationTest {
 
   private void assertSameNotFound(String foreignPath, String missingPath) throws Exception {
     mvc.perform(get(foreignPath).with(officer("tenant-a"))).andExpect(status().isOk());
-    mvc.perform(get(foreignPath)).andExpect(status().isUnauthorized());
+    mvc.perform(get(foreignPath))
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
+        .andExpect(securityProblem(401, "Unauthorized", "Authentication is required."));
     mvc.perform(get(foreignPath).with(jwt().authorities(new SimpleGrantedAuthority("ROLE_VIEWER"))))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(securityProblem(403, "Forbidden", "Access is denied."));
     var foreign = mvc.perform(get(foreignPath).with(officer("tenant-b"))).andReturn().getResponse();
     var missing = mvc.perform(get(missingPath).with(officer("tenant-b"))).andReturn().getResponse();
     assertAll(
@@ -178,6 +193,20 @@ class IntegrationTenantIsolationTest {
         () ->
             assertThat(normalizedBody(foreign, foreignPath))
                 .containsExactly(normalizedBody(missing, missingPath)));
+  }
+
+  private static ResultMatcher securityProblem(int status, String title, String detail) {
+    return result -> {
+      content().contentType(MediaType.APPLICATION_PROBLEM_JSON).match(result);
+      content()
+          .json(
+              """
+              {"title":"%s","status":%d,"detail":"%s","instance":"%s"}
+              """
+                  .formatted(title, status, detail, result.getRequest().getRequestURI()),
+              JsonCompareMode.STRICT)
+          .match(result);
+    };
   }
 
   private static byte[] normalizedBody(MockHttpServletResponse response, String path)
