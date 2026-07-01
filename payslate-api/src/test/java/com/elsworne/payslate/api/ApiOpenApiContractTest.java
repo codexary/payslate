@@ -106,6 +106,39 @@ class ApiOpenApiContractTest {
         paths, "/v1/pay-runs/{id}/aba", "get", false, null, Set.of(), "text/plain", Set.of());
   }
 
+  @Test
+  void everyOperationDeclaresSharedErrorResponses() throws Exception {
+    Map<String, Object> document = new Yaml().load(Files.readString(Path.of("openapi.yaml")));
+    var errors =
+        Map.ofEntries(
+            Map.entry("400", "BadRequest"),
+            Map.entry("401", "Unauthorized"),
+            Map.entry("403", "Forbidden"),
+            Map.entry("404", "NotFound"),
+            Map.entry("409", "Conflict"));
+    for (var path : map(document.get("paths")).entrySet()) {
+      for (var method :
+          Set.of("get", "put", "post", "delete", "options", "head", "patch", "trace")) {
+        if (!map(path.getValue()).containsKey(method)) continue;
+        var responses = map(map(map(path.getValue()).get(method)).get("responses"));
+        assertThat(responses).as("%s %s", method, path.getKey()).containsKeys("401", "403");
+        if (path.getKey().contains("{")) assertThat(responses).containsKey("404");
+        for (var error : errors.entrySet())
+          if (responses.containsKey(error.getKey()))
+            assertThat(map(responses.get(error.getKey())))
+                .isEqualTo(Map.of("$ref", "#/components/responses/" + error.getValue()));
+      }
+    }
+    var components = map(document.get("components"));
+    for (var name : errors.values()) {
+      var response = map(map(components.get("responses")).get(name));
+      assertThat(response.get("description")).asString().isNotBlank();
+      var content = map(map(response.get("content")).get("application/problem+json"));
+      assertThat(map(content.get("schema")))
+          .isEqualTo(Map.of("$ref", "#/components/schemas/Problem"));
+    }
+  }
+
   private static void assertSchema(
       Map<String, Object> paths,
       String path,

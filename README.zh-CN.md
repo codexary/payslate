@@ -35,6 +35,8 @@ Net: 20.00
 
 本地 Compose 启动位于 `http://localhost:8081/realms/payslate` 的开发 OIDC 发行者，`PAYSLATE_ISSUER_PORT` 可以改它的宿主机端口。合成员工账户为 `officer-a`（雇主 `synthetic-a`）、`officer-b`（雇主 `synthetic-b`）及 `employee-a`；只用于本地测试的密码写在 `payslate-api/dev-issuer/payslate-realm.json`。可以通过 OIDC authorization-code 流程登录，也可以在开发 realm 使用 direct grant 取得 API 实验用 bearer token。token 必须包含 `employer_id` 和 `PAYROLL_OFFICER` 或 `EMPLOYEE` realm role。操作员只管理自己雇主的员工与工资批次；员工只能读取自己的工资单。所有数据库查询均按雇主 ID 限定。
 
+对于按 ID 指定员工、工资批次或工资单的请求，`404 Not Found` 表示调用方看不到这条记录，不论它是否存在。
+
 发行者比 API 启动得慢：先等 `http://localhost:8081/realms/payslate/.well-known/openid-configuration` 能够返回，再申请 token。下面的命令从开发发行者取得 `officer-a` 的 token（若设置了 `PAYSLATE_ISSUER_PORT`，请相应改端口），响应中的 `access_token` 就是 bearer token：
 
 ```sh

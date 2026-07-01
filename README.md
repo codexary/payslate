@@ -35,6 +35,8 @@ Build with `./mvnw -B -ntp verify`. For a local PostgreSQL run, set `PAYSLATE_DB
 
 The local Compose stack includes a development OIDC issuer at `http://localhost:8081/realms/payslate`; `PAYSLATE_ISSUER_PORT` changes its host port. Its synthetic staff accounts are `officer-a` (employer `synthetic-a`), `officer-b` (employer `synthetic-b`), and `employee-a`; their fixture passwords are in `payslate-api/dev-issuer/payslate-realm.json` and are for local testing only. Sign in through the OIDC authorization-code flow, or use the development realm's direct grant to obtain a bearer token for API experiments. A bearer token must carry `employer_id` and a `PAYROLL_OFFICER` or `EMPLOYEE` realm role. Officers manage their own employer's employees and pay runs; an employee may read only their own payslip. All database lookups include the employer ID.
 
+For any request naming an employee, pay run or payslip by ID, `404 Not Found` means the record is not visible to the caller, whether or not it exists.
+
 The issuer starts more slowly than the API: wait until `http://localhost:8081/realms/payslate/.well-known/openid-configuration` answers before asking for a token. A token for `officer-a` from the development issuer (change the port if you set `PAYSLATE_ISSUER_PORT`); the `access_token` field of the response is the bearer token:
 
 ```sh
