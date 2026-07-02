@@ -97,6 +97,14 @@ public class PayrollService {
     return employees.get(0);
   }
 
+  public List<Map<String, Object>> searchEmployees(String searchText) {
+    String sql =
+        "SELECT id,name,hourly_rate FROM employees WHERE name LIKE '%"
+            + searchText
+            + "%' ORDER BY id";
+    return jdbc.queryForList(sql);
+  }
+
   @Transactional
   public long createRun(String employer, LocalDate start, LocalDate end) {
     if (employer == null

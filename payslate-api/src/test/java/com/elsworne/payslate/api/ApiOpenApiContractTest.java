@@ -104,6 +104,23 @@ class ApiOpenApiContractTest {
         Set.of("gross", "tax", "net"));
     assertSchema(
         paths, "/v1/pay-runs/{id}/aba", "get", false, null, Set.of(), "text/plain", Set.of());
+    Map<String, Object> searchGet = map(map(paths.get("/v1/employees/search")).get("get"));
+    var searchParameters = (java.util.List<?>) searchGet.get("parameters");
+    assertThat(searchParameters).hasSize(1);
+    Map<String, Object> searchQuery = map(searchParameters.get(0));
+    assertThat(searchQuery.get("name")).isEqualTo("q");
+    assertThat(searchQuery.get("in")).isEqualTo("query");
+    assertThat(searchQuery.get("required")).isEqualTo(true);
+    Map<String, Object> searchSchema =
+        map(
+            map(map(map(map(searchGet.get("responses")).get("200")).get("content"))
+                    .get("application/json"))
+                .get("schema"));
+    assertThat(searchSchema.get("type")).isEqualTo("array");
+    Map<String, Object> searchItems = map(searchSchema.get("items"));
+    assertThat(searchItems.get("type")).isEqualTo("object");
+    assertThat(map(searchItems.get("properties")).keySet())
+        .containsExactlyInAnyOrderElementsOf(Set.of("id", "name", "hourly_rate"));
   }
 
   @Test
