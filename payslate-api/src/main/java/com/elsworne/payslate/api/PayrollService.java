@@ -98,11 +98,8 @@ public class PayrollService {
   }
 
   public List<Map<String, Object>> searchEmployees(String searchText) {
-    String sql =
-        "SELECT id,name,hourly_rate FROM employees WHERE name LIKE '%"
-            + searchText
-            + "%' ORDER BY id";
-    return jdbc.queryForList(sql);
+    String sql = "SELECT id,name,hourly_rate FROM employees WHERE name LIKE ? ORDER BY id";
+    return jdbc.queryForList(sql, "%" + searchText + "%");
   }
 
   @Transactional
