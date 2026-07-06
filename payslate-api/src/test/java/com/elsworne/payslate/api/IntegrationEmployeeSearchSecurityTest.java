@@ -34,7 +34,7 @@ class IntegrationEmployeeSearchSecurityTest {
   private static final String QUOTED_NAME = "O' OR '1'='1' --";
 
   @Test
-  void quotedNameIsSearchDataAndMatchesOnlyThatEmployee() {
+  void quotedNameIsSearchDataAndTheSearchStaysWithinTheCallersEmployer() {
     long matching =
         service.createEmployee(
             "tenant-a",
@@ -52,9 +52,19 @@ class IntegrationEmployeeSearchSecurityTest {
         "123-456",
         "00000002",
         BigDecimal.ZERO);
+    long otherEmployer =
+        service.createEmployee(
+            "tenant-b",
+            QUOTED_NAME,
+            "PERMANENT",
+            new BigDecimal("77.00"),
+            "123-456",
+            "00000003",
+            BigDecimal.ZERO);
 
-    assertThat(service.searchEmployees(QUOTED_NAME))
+    assertThat(service.searchEmployees("tenant-a", QUOTED_NAME))
         .extracting(row -> ((Number) row.get("id")).longValue())
-        .containsExactly(matching);
+        .containsExactly(matching)
+        .doesNotContain(otherEmployer);
   }
 }

@@ -65,7 +65,7 @@ public class PayrollController {
   @GetMapping("/employees/search")
   public java.util.List<Map<String, Object>> searchEmployees(
       @AuthenticationPrincipal Jwt jwt, @RequestParam("q") String query) {
-    return service.searchEmployees(query);
+    return service.searchEmployees(employer(jwt), query);
   }
 
   @PostMapping(path = "/timesheets", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
