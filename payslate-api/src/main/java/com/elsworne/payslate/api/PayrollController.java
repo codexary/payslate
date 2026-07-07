@@ -127,9 +127,11 @@ public class PayrollController {
   }
 
   private static void checkPayslipAccess(Jwt jwt, long employeeId) {
+    var authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null) throw new AccessDeniedException("Authentication required");
     boolean officer =
-        SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-            .anyMatch(authority -> authority.getAuthority().equals("ROLE_PAYROLL_OFFICER"));
+        authentication.getAuthorities().stream()
+            .anyMatch(authority -> "ROLE_PAYROLL_OFFICER".equals(authority.getAuthority()));
     if (!officer && !Long.toString(employeeId).equals(jwt.getClaimAsString("employee_id")))
       throw new AccessDeniedException("Employee may only read own payslip");
   }

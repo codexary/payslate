@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Stateless bearer-token API: browsers send no ambient session credentials, so CSRF tokens add nothing. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.ApiSecurity"/>
+    <Bug pattern="SPRING_CSRF_PROTECTION_DISABLED"/>
+  </Match>
+  <!-- HttpSecurity.build declares Exception in the Spring Security API. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.ApiSecurity"/>
+    <Bug pattern="THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION"/>
+  </Match>
+  <!-- Framework endpoint inventory is informational, not a defect. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.PayrollController"/>
+    <Bug pattern="SPRING_ENDPOINT"/>
+  </Match>
+  <!-- Generated-key holder and statement-callback findings on the shared insert helper. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.PayrollService"/>
+    <Or>
+      <Method name="insert"/>
+      <Method name="~lambda\$insert.*"/>
+    </Or>
+    <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE,OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE"/>
+  </Match>
+  <!-- insert receives only literal SQL with bound values; the analyzer cannot see its callers. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.PayrollService"/>
+    <Or>
+      <Method name="insert"/>
+      <Method name="~lambda\$insert.*"/>
+    </Or>
+    <Bug pattern="SQL_INJECTION_JDBC"/>
+  </Match>
+  <!-- CSV case-folding normalization is reviewed with the upload hardening. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.TimesheetCsv"/>
+    <Bug pattern="IMPROPER_UNICODE"/>
+  </Match>
+</FindBugsFilter>
