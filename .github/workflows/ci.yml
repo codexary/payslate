@@ -86,3 +86,10 @@ jobs:
           java-version: '21'
           cache: maven
       - run: ./mvnw -B -ntp -pl payslate-api -am -Dtest=SystemWholePayrollFlowTest,AcceptanceMargaretPayrollTest -Dsurefire.failIfNoSpecifiedTests=false test
+  semgrep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: semgrep/semgrep:1.183.0
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: semgrep scan --config .semgrep/payslate.yml --error payslate-api/src/main/java

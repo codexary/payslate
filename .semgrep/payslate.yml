@@ -1,0 +1,34 @@
+rules:
+  - id: payslate.dynamic-jdbc-sql
+    languages: [java]
+    severity: ERROR
+    message: Bind untrusted values in a prepared query.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              String $SQL = $PREFIX + $INPUT + $SUFFIX;
+              ...
+              $JDBC.queryForList($SQL, ...);
+          - pattern: |
+              String $SQL = $PREFIX + $INPUT + $SUFFIX;
+              ...
+              $JDBC.queryForObject($SQL, ...);
+          - pattern: |
+              String $SQL = $PREFIX + $INPUT + $SUFFIX;
+              ...
+              $JDBC.query($SQL, ...);
+          - pattern: |
+              String $SQL = $PREFIX + $INPUT + $SUFFIX;
+              ...
+              $JDBC.update($SQL, ...);
+          - pattern: |
+              String $SQL = $PREFIX + $INPUT + $SUFFIX;
+              ...
+              $JDBC.execute($SQL, ...);
+          - pattern: $JDBC.queryForList($SQL + $INPUT, ...)
+          - pattern: $JDBC.queryForObject($SQL + $INPUT, ...)
+          - pattern: $JDBC.query($SQL + $INPUT, ...)
+          - pattern: $JDBC.update($SQL + $INPUT, ...)
+          - pattern: $JDBC.execute($SQL + $INPUT, ...)
+          - pattern: $STMT.executeQuery($SQL + $INPUT)
+          - pattern: $CONN.prepareStatement($SQL + $INPUT)
