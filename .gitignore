@@ -3,3 +3,5 @@
 **/target/
 .mvn/maven.config
 **/.jqwik-database
+legacy/aba-convert/aba-convert
+legacy/aba-convert/aba-convert.dSYM/
