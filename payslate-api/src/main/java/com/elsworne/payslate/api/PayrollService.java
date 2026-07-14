@@ -98,7 +98,8 @@ public class PayrollService {
   }
 
   public List<Map<String, Object>> searchEmployees(String employer, String searchText) {
-    if (searchText == null) throw new IllegalArgumentException("Missing search text");
+    if (searchText == null || searchText.isBlank())
+      throw new IllegalArgumentException("Missing search text");
     String sql =
         "SELECT id,name,hourly_rate FROM employees WHERE employer_id = ? AND name LIKE ? ORDER BY id";
     return jdbc.queryForList(sql, employer, "%" + searchText + "%");

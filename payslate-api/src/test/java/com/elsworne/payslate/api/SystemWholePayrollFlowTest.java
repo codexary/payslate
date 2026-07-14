@@ -5,6 +5,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.elsworne.payslate.bank.AbaFile;
@@ -194,6 +196,21 @@ class SystemWholePayrollFlowTest {
                 runId,
                 employeeId))
         .isEqualByComparingTo(gross);
+  }
+
+  @Test
+  void employeeSearchWithoutTextIsAnInvalidRequest() throws Exception {
+    for (var request :
+        java.util.List.of(
+            get("/v1/employees/search"),
+            get("/v1/employees/search").param("q", ""),
+            get("/v1/employees/search").param("q", "  "))) {
+      mvc.perform(request.with(officer()))
+          .andExpect(status().isBadRequest())
+          .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.title").value("Invalid request"))
+          .andExpect(jsonPath("$.detail").value("Missing search text"));
+    }
   }
 
   private static RequestPostProcessor officer() {

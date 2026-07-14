@@ -64,7 +64,7 @@ public class PayrollController {
 
   @GetMapping("/employees/search")
   public java.util.List<Map<String, Object>> searchEmployees(
-      @AuthenticationPrincipal Jwt jwt, @RequestParam("q") String query) {
+      @AuthenticationPrincipal Jwt jwt, @RequestParam(name = "q", required = false) String query) {
     return service.searchEmployees(employer(jwt), query);
   }
 
