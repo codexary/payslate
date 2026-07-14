@@ -41,7 +41,7 @@ flowchart TB
 | API to PostgreSQL | Information disclosure, elevation of privilege | A query could cross employer boundaries | Private connectivity and employer-scoped queries verified; least privilege and encryption at rest open |
 | API to pay engine to payslip | Tampering, repudiation | A wrong figure could reach an approved payslip | Engine characterization and state tests present; an immutable approval record open |
 | API to operator ABA download | Information disclosure, tampering | Another employer's bank file could be downloaded | Paid-state and employer-scoped authorization present; download audit open |
-| Old export to aba-convert | Tampering, denial of service | A crafted file could corrupt memory in the local converter | Sanitizer-based robustness review open; bounded name copy and checked batch total open |
+| Old export to aba-convert | Tampering, denial of service | A crafted file could corrupt memory in the local converter | Robustness review done: a stack buffer overflow in the account-name copy and an integer overflow in the batch total reproduced under ASan/UBSan; a bounded name copy and a checked batch total are open |
 | Local ABA to bank handoff | Spoofing, tampering | An altered file could reach the bank | File-format checks partial; authenticated transfer and reconciliation open |
 
 STRIDE stands for spoofing, tampering, repudiation, information disclosure, denial of service and elevation of
