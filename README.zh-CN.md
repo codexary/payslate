@@ -33,6 +33,8 @@ Net: 20.00
 
 使用 `./mvnw -B -ntp verify` 构建。运行本地 PostgreSQL 时，先设置本地开发用的 `PAYSLATE_DB_USER`、`PAYSLATE_DB_PASSWORD`、`PAYSLATE_DEV_ISSUER_ADMIN` 和 `PAYSLATE_DEV_ISSUER_PASSWORD`，执行 `./mvnw -pl payslate-api -am package`，再执行 `docker compose up --build`。API 监听宿主机的 8080 端口，可以用 `PAYSLATE_API_PORT` 改用其他端口。`payslate-api/openapi.yaml` 描述员工、员工搜索、CSV 工时表、工资批次、工资单与 ABA 下载。存活与就绪端点为 `/actuator/health/liveness` 和 `/actuator/health/readiness`。错误采用 `application/problem+json`，日志采用 ECS 结构化 JSON。`./mvnw -B -ntp -Pdocker verify` 也运行 PostgreSQL Testcontainers 测试。CSV 支持逗号、分号和制表符、ADR 0003 规定的表头别名、ISO 和澳大利亚日期、24 小时与 12 小时时间、UTF-8 BOM 以及带引号的姓名；列数混杂、非法日期和空班次会被拒绝。所有测试数据均为合成数据；仓库税表仅为示例，生产环境每财年必须加载官方税表。
 
+指标默认不向外发送。设置 `PAYSLATE_METRICS_EXPORT=true` 可启用 OTLP 导出，`PAYSLATE_OTLP_METRICS_URL` 指定采集器端点（默认 `http://localhost:4318/v1/metrics`），`PAYSLATE_METRICS_STEP` 指定发送间隔（默认 `1m`）。服务名为 `payslate-api`；HTTP 计时指标的标签仅包含路由模板、请求方法和状态码。
+
 本地 Compose 启动位于 `http://localhost:8081/realms/payslate` 的开发 OIDC 发行者，`PAYSLATE_ISSUER_PORT` 可以改它的宿主机端口。合成员工账户为 `officer-a`（雇主 `synthetic-a`）、`officer-b`（雇主 `synthetic-b`）及 `employee-a`；只用于本地测试的密码写在 `payslate-api/dev-issuer/payslate-realm.json`。可以通过 OIDC authorization-code 流程登录，也可以在开发 realm 使用 direct grant 取得 API 实验用 bearer token。token 必须包含 `employer_id` 和 `PAYROLL_OFFICER` 或 `EMPLOYEE` realm role。操作员只管理自己雇主的员工与工资批次；员工只能读取自己的工资单。操作员可以在 `GET /v1/employees/search?q=<文本>` 按姓名搜索自己雇主的员工；搜索文本作为绑定查询参数传入，结果按调用方所属雇主限定。所有数据库查询均按雇主 ID 限定。
 
 对于按 ID 指定员工、工资批次或工资单的请求，`404 Not Found` 表示调用方看不到这条记录，不论它是否存在。
