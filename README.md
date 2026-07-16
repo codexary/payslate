@@ -56,9 +56,9 @@ The service constructs its pay engine using `payslate.time-zone`, defaulting to 
 
 ## Monitoring
 
-With the Compose stack running, open Grafana at `http://localhost:3000` (or the port set by `PAYSLATE_GRAFANA_PORT`) and select **Payslate → Payslate API**. The dashboard is provisioned automatically and refreshes every 5 seconds; allow a few exports after sending API requests.
+With the Compose stack running, open Grafana at `http://localhost:3000` (or the port set by `PAYSLATE_GRAFANA_PORT`) and select **Payslate → Payslate API**. The dashboard is provisioned automatically and refreshes every 5 seconds; allow a few exports after sending API requests. Panels sample at 10-second intervals and show per-interval peaks for maximum latency and saturation, so a single slow request is visible.
 
-Request rate shows which routes are busy. The 4xx panel groups rejected requests by route and status; the 5xx panel shows server failures by route and reads zero when there are none. The latency panel shows p95 and maximum request duration in seconds by route. Saturation shows busy Tomcat request threads and active Hikari database connections, helping the person on call see whether requests are tying up server or database capacity. HTTP panels exclude `/actuator.*` health probes; saturation gauges cover the whole service.
+Request rate shows which routes are busy. The 4xx panel groups rejected requests by route and status; the 5xx panel shows server failures by route and reads zero when there are none. The latency panel shows p95 and maximum request duration in seconds by route. The two saturation panels show busy Tomcat request threads and active Hikari database connections as percentages of their configured capacities (200 threads and 10 connections), using the peak per 10-second interval. Each legend shows the maximum and last percentage, helping the person on call judge how much capacity is in use. HTTP panels exclude `/actuator.*` health probes; saturation gauges cover the whole service.
 
 ## About this repository
 
