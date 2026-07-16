@@ -33,7 +33,7 @@ Net: 20.00
 
 使用 `./mvnw -B -ntp verify` 构建。运行本地 PostgreSQL 时，先设置本地开发用的 `PAYSLATE_DB_USER`、`PAYSLATE_DB_PASSWORD`、`PAYSLATE_DEV_ISSUER_ADMIN` 和 `PAYSLATE_DEV_ISSUER_PASSWORD`，执行 `./mvnw -pl payslate-api -am package`，再执行 `docker compose up --build`。API 监听宿主机的 8080 端口，可以用 `PAYSLATE_API_PORT` 改用其他端口。`payslate-api/openapi.yaml` 描述员工、员工搜索、CSV 工时表、工资批次、工资单与 ABA 下载。存活与就绪端点为 `/actuator/health/liveness` 和 `/actuator/health/readiness`。错误采用 `application/problem+json`，日志采用 ECS 结构化 JSON。`./mvnw -B -ntp -Pdocker verify` 也运行 PostgreSQL Testcontainers 测试。CSV 支持逗号、分号和制表符、ADR 0003 规定的表头别名、ISO 和澳大利亚日期、24 小时与 12 小时时间、UTF-8 BOM 以及带引号的姓名；列数混杂、非法日期和空班次会被拒绝。所有测试数据均为合成数据；仓库税表仅为示例，生产环境每财年必须加载官方税表。
 
-指标默认不向外发送。设置 `PAYSLATE_METRICS_EXPORT=true` 可启用 OTLP 导出，`PAYSLATE_OTLP_METRICS_URL` 指定采集器端点（默认 `http://localhost:4318/v1/metrics`），`PAYSLATE_METRICS_STEP` 指定发送间隔（默认 `1m`）。服务名为 `payslate-api`；HTTP 计时指标的标签仅包含路由模板、请求方法和状态码。
+指标默认不向外发送。设置 `PAYSLATE_METRICS_EXPORT=true` 可启用 OTLP 导出，`PAYSLATE_OTLP_METRICS_URL` 指定采集器端点（默认 `http://localhost:4318/v1/metrics`），`PAYSLATE_METRICS_STEP` 指定发送间隔（默认 `1m`）。Compose 默认启用导出，每 `5s` 向 `http://observability:4318/v1/metrics` 发送一次；可通过上述变量覆盖这些默认值。`PAYSLATE_GRAFANA_PORT` 可更改 Grafana 的宿主机端口（默认 `3000`）。服务名为 `payslate-api`；HTTP 计时指标的标签仅包含路由模板、请求方法和状态码。
 
 本地 Compose 启动位于 `http://localhost:8081/realms/payslate` 的开发 OIDC 发行者，`PAYSLATE_ISSUER_PORT` 可以改它的宿主机端口。合成员工账户为 `officer-a`（雇主 `synthetic-a`）、`officer-b`（雇主 `synthetic-b`）及 `employee-a`；只用于本地测试的密码写在 `payslate-api/dev-issuer/payslate-realm.json`。可以通过 OIDC authorization-code 流程登录，也可以在开发 realm 使用 direct grant 取得 API 实验用 bearer token。token 必须包含 `employer_id` 和 `PAYROLL_OFFICER` 或 `EMPLOYEE` realm role。操作员只管理自己雇主的员工与工资批次；员工只能读取自己的工资单。操作员可以在 `GET /v1/employees/search?q=<文本>` 按姓名搜索自己雇主的员工；搜索文本作为绑定查询参数传入，结果按调用方所属雇主限定。所有数据库查询均按雇主 ID 限定。
 
@@ -51,6 +51,12 @@ curl -s http://localhost:8081/realms/payslate/protocol/openid-connect/token \
 向 `POST /v1/pay-runs/calendar` 提交 `{"frequency":"WEEKLY","anchorPayDate":"2026-03-01","payDate":"2026-03-01"}` 可创建日历工资批次。API 保存含首尾日期的 2026-02-23 至 2026-03-01 期间；2026-03-02 不在该日历上，会被拒绝。频率为 `WEEKLY`、`FORTNIGHTLY` 或 `MONTHLY`；每月期间对应自然月，在月末发薪。
 
 服务使用 `payslate.time-zone` 构造工资引擎，默认为 `Australia/Melbourne`；可设置 `PAYSLATE_TIME_ZONE` 或覆盖 Spring 属性选择其他时区。工资按这个统一配置时区中的实际经过时间计算，日期、星期和周规则仍使用本地时间。重叠的本地时间选择较早的偏移，不存在的时间向前移动经过空缺。CSV 无法区分重复小时的后一次出现。每雇主独立时区仍是待定事项。
+
+## 监控
+
+Compose 启动后，打开 `http://localhost:3000`（或 `PAYSLATE_GRAFANA_PORT` 指定的端口），在 Grafana 中选择 **Payslate → Payslate API**。仪表盘会自动加载，每 5 秒刷新一次；发送 API 请求后，等待几个指标发送周期即可看到数据。
+
+请求速率面板显示哪些路由最繁忙。4xx 面板按路由和状态码显示被拒绝的请求；5xx 面板按路由显示服务端错误，没有错误时显示零。延迟面板按路由显示以秒为单位的第 95 百分位耗时和最大耗时。饱和度面板显示 Tomcat 正在处理请求的线程数和 Hikari 活跃数据库连接数，帮助值班人员判断请求是否占用了大量服务端或数据库资源。HTTP 面板排除 `/actuator.*` 健康探测；饱和度指标反映整个服务的资源使用情况。
 
 ## 关于本仓库
 

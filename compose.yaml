@@ -1,4 +1,11 @@
 services:
+  observability:
+    image: grafana/otel-lgtm:0.38.1
+    ports:
+      - "127.0.0.1:${PAYSLATE_GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./observability/grafana/provisioning/payslate.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/payslate.yaml:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
   database:
     image: postgres:18.3-bookworm
     environment:
@@ -31,9 +38,14 @@ services:
       PAYSLATE_OIDC_ISSUER_URI: http://localhost:${PAYSLATE_ISSUER_PORT:-8081}/realms/payslate
       PAYSLATE_OIDC_JWKS_URI: http://issuer:8080/realms/payslate/protocol/openid-connect/certs
       PAYSLATE_TIME_ZONE: ${PAYSLATE_TIME_ZONE:-Australia/Melbourne}
+      PAYSLATE_METRICS_EXPORT: ${PAYSLATE_METRICS_EXPORT:-true}
+      PAYSLATE_OTLP_METRICS_URL: ${PAYSLATE_OTLP_METRICS_URL:-http://observability:4318/v1/metrics}
+      PAYSLATE_METRICS_STEP: ${PAYSLATE_METRICS_STEP:-5s}
     ports:
       - "127.0.0.1:${PAYSLATE_API_PORT:-8080}:8080"
     depends_on:
+      observability:
+        condition: service_started
       database:
         condition: service_healthy
       issuer:
