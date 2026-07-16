@@ -7,3 +7,6 @@ legacy/aba-convert/aba-convert
 legacy/aba-convert/aba-convert.dSYM/
 legacy/aba-convert/tests/.long-name.log
 legacy/aba-convert/tests/.total-overflow.log
+
+robustness/out/
+robustness/__pycache__/

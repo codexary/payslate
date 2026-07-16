@@ -1,0 +1,83 @@
+import csv
+import io
+import random
+import unittest
+
+from generators import EMPLOYEES, Generators, contract_rows, large_seed, mutate
+
+
+class GeneratorTests(unittest.TestCase):
+    def test_determinism_and_stream_independence(self):
+        for strategy in ('random', 'mutation', 'grammar'):
+            a, b = Generators(20260716), Generators(20260716)
+            for _ in range(20):
+                if strategy != 'random':
+                    b.next('random')
+                self.assertEqual(a.next(strategy), b.next(strategy))
+        for strategy in ('random', 'mutation'):
+            a, b = Generators(7), Generators(7)
+            self.assertEqual([a.next(strategy, 'pay-run-events') for _ in range(30)],
+                             [b.next(strategy, 'pay-run-events') for _ in range(30)])
+
+    def test_grammar_width_counts_and_contract(self):
+        for seed in (1, 42, 20260716):
+            generator = Generators(seed)
+            for _ in range(300):
+                candidate = generator.next('grammar')
+                text = candidate.data.decode('utf-8-sig')
+                header = text.splitlines()[0]
+                delimiter = '\t' if '\t' in header else ';' if ';' in header else ','
+                rows = [row for row in csv.reader(io.StringIO(text, newline=''),
+                                                  delimiter=delimiter, strict=True) if row]
+                self.assertTrue(all(len(row) == len(rows[0]) for row in rows))
+                self.assertEqual(len(rows) - 1, candidate.expected_rows)
+                self.assertEqual(contract_rows(candidate.data), candidate.expected_rows,
+                                 candidate.data)
+                self.assertTrue(all(row[0] in EMPLOYEES for row in rows[1:]))
+
+    def test_large_seed_is_deterministic_and_valid(self):
+        a, b = large_seed(random.Random(9)), large_seed(random.Random(9))
+        self.assertEqual(a, b)
+        self.assertTrue(5000 <= contract_rows(a) <= 20000)
+
+    def test_field_swap_preserves_row_boundary(self):
+        class SwapOnly:
+            def randint(self, a, b):
+                return 1
+
+            def choice(self, values):
+                return 'swap'
+
+            def randrange(self, stop):
+                return 1
+
+            def sample(self, population, count):
+                return [0, 3]
+
+        for newline in (b'\n', b'\r\n'):
+            data = newline.join((b'employee,date,start,end',
+                                 b'Liam Walsh,2026-07-06,09:00,17:00', b''))
+            result = mutate(data, SwapOnly())
+            self.assertEqual(result.splitlines(), [b'employee,date,start,end',
+                                                    b'17:00,2026-07-06,09:00,Liam Walsh'])
+            self.assertTrue(result.endswith(newline))
+
+    def test_support_seed_bytes(self):
+        from generators import ROOT
+        self.assertIn(b'\xe9', (ROOT / 'seeds/ticket-c-windows1252.csv').read_bytes())
+        data = (ROOT / 'seeds/bom-semicolon.csv').read_bytes()
+        self.assertTrue(data.startswith(b'\xef\xbb\xbf'))
+        self.assertIn(b'\r\n', data)
+
+    def test_contract_guard_rejects_invalid_shrinks(self):
+        good = b'employee,date,start,end\nLiam Walsh,2026-07-06,09:00,17:00\n'
+        self.assertEqual(contract_rows(good), 1)
+        for data in (b'', good.replace(b'17:00', b'09:00'),
+                     good.replace(b'2026-07-06', b'2026-02-30'),
+                     good.replace(b'Liam Walsh', b'Unknown'), good.replace(b'\n', b'\r'),
+                     good.replace(b'09:00', b'24:00'), good + b'broken\n'):
+            self.assertIsNone(contract_rows(data), data)
+
+
+if __name__ == '__main__':
+    unittest.main()

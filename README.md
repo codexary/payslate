@@ -29,6 +29,8 @@ Mutation analysis: `./mvnw -B -ntp -pl pay-engine test-compile org.pitest:pitest
 
 Seeded calendar and pay-path campaign: `./mvnw -B -ntp -pl pay-engine -am -Dtest=PayCalendarRandomTest -Dsurefire.failIfNoSpecifiedTests=false test`. Distribution, elapsed-time oracle, CSV overlap limits and measured results: [random calendars](docs/test-design/random-calendars.md).
 
+Seeded HTTP robustness testing: the manual [API campaign](robustness/) sends synthetic timesheets and pay-run events through a local Compose stack, compares random, mutation and grammar inputs, and saves reduced finding cases. It is not part of CI.
+
 ## Payslate Online API
 
 Build with `./mvnw -B -ntp verify`. For a local PostgreSQL run, set `PAYSLATE_DB_USER`, `PAYSLATE_DB_PASSWORD`, `PAYSLATE_DEV_ISSUER_ADMIN`, and `PAYSLATE_DEV_ISSUER_PASSWORD` to local development values, run `./mvnw -pl payslate-api -am package`, then `docker compose up --build`. The API listens on host port 8080; set `PAYSLATE_API_PORT` to use another port. `payslate-api/openapi.yaml` documents employees, employee search, CSV timesheets, pay runs, payslips and ABA downloads. The liveness and readiness URLs are `/actuator/health/liveness` and `/actuator/health/readiness`. Errors use `application/problem+json`; logs use structured ECS JSON. `./mvnw -B -ntp -Pdocker verify` also runs PostgreSQL Testcontainers tests. The CSV accepts comma, semicolon and tab delimiters, the header aliases from ADR 0003, ISO and Australian dates, 24-hour and 12-hour times, UTF-8 BOM and quoted names. It rejects mixed columns, invalid dates and empty shifts. All data in the tests is synthetic, and the bundled tax schedule is an example only; production must load official tables each financial year.
