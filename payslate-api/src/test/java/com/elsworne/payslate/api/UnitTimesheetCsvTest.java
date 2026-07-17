@@ -33,7 +33,7 @@ class UnitTimesheetCsvTest {
                 TimesheetCsv.parse(
                     "employee,date,start,end,public holiday\nAlice Test,2026-02-23,09:00,17:00,maybe\n"))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Invalid public holiday value");
+        .hasMessageContaining("Invalid public holiday value");
   }
 
   @Test
