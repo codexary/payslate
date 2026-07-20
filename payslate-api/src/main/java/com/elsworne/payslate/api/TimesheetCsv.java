@@ -1,7 +1,10 @@
 package com.elsworne.payslate.api;
 
+import java.io.FilterReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -25,29 +28,35 @@ final class TimesheetCsv {
   static List<Row> parse(String input) {
     if (input == null || input.isBlank()) throw new IllegalArgumentException("Empty CSV");
     String text = input.startsWith("\uFEFF") ? input.substring(1) : input;
-    if (text.indexOf('\uFEFF') >= 0
-        || text.matches("(?s).*\\r(?!\\n).*")
-        || text.matches("(?s).*\"[^\"]*\\n[^\"]*\".*"))
-      throw new IllegalArgumentException("Unsupported CSV line ending or embedded newline");
     String first = text.split("\\R", 2)[0];
     char delimiter = first.contains("\t") ? '\t' : first.contains(";") ? ';' : ',';
+    long line = 1;
     try (var parser =
-        CSVFormat.RFC4180.builder().setDelimiter(delimiter).get().parse(new StringReader(text))) {
-      var records = parser.getRecords();
-      if (records.isEmpty()) throw new IllegalArgumentException("Missing header");
+        CSVFormat.RFC4180
+            .builder()
+            .setDelimiter(delimiter)
+            .get()
+            .parse(new LineEndingReader(new StringReader(text)))) {
+      var records = parser.iterator();
+      if (!records.hasNext()) throw new IllegalArgumentException("Missing header");
+      var header = records.next();
+      checkFields(header, line);
       Map<String, Integer> columns = new HashMap<>();
-      for (int i = 0; i < records.get(0).size(); i++)
-        columns.put(records.get(0).get(i).trim().toLowerCase(Locale.ROOT), i);
+      for (int i = 0; i < header.size(); i++)
+        columns.put(header.get(i).trim().toLowerCase(Locale.ROOT), i);
       int employee = column(columns, "employee", "employee name", "staff");
       int date = column(columns, "date", "shift date");
       int start = column(columns, "start", "start time");
       int end = column(columns, "end", "end time");
       int holiday = optionalColumn(columns, "public holiday", "public_holiday", "holiday");
       var rows = new ArrayList<Row>();
-      for (int i = 1; i < records.size(); i++) {
-        var row = records.get(i);
+      while (true) {
+        line = parser.getCurrentLineNumber() + 1;
+        if (!records.hasNext()) break;
+        var row = records.next();
+        checkFields(row, line);
         if (row.size() == 1 && row.get(0).isBlank()) continue;
-        if (row.size() != records.get(0).size())
+        if (row.size() != header.size())
           throw new IllegalArgumentException("Wrong CSV column count");
         String name = row.get(employee).trim();
         if (name.isBlank()) throw new IllegalArgumentException("Empty employee");
@@ -60,8 +69,50 @@ final class TimesheetCsv {
       }
       if (rows.isEmpty()) throw new IllegalArgumentException("No shifts");
       return List.copyOf(rows);
+    } catch (UncheckedIOException e) {
+      throw new IllegalArgumentException("Line " + line + ": invalid quoted field", e);
     } catch (IOException | java.time.DateTimeException e) {
       throw new IllegalArgumentException("Invalid CSV", e);
+    }
+  }
+
+  private static void checkFields(org.apache.commons.csv.CSVRecord record, long line) {
+    for (String field : record) {
+      if (field.indexOf('\n') >= 0 || field.indexOf('\r') >= 0)
+        throw new IllegalArgumentException("Line " + line + ": quoted field contains a line break");
+      if (field.indexOf('\uFEFF') >= 0)
+        throw new IllegalArgumentException("Line " + line + ": unexpected BOM");
+    }
+  }
+
+  private static final class LineEndingReader extends FilterReader {
+    private long line = 1;
+    private boolean carriageReturn;
+
+    LineEndingReader(Reader reader) {
+      super(reader);
+    }
+
+    @Override
+    public int read() throws IOException {
+      int value = super.read();
+      if (carriageReturn && value != '\n')
+        throw new IllegalArgumentException("Line " + line + ": bare carriage return");
+      carriageReturn = value == '\r';
+      if (value == '\n') line++;
+      return value;
+    }
+
+    @Override
+    public int read(char[] buffer, int offset, int length) throws IOException {
+      if (length == 0) return 0;
+      int count = 0;
+      while (count < length) {
+        int value = read();
+        if (value < 0) return count == 0 ? -1 : count;
+        buffer[offset + count++] = (char) value;
+      }
+      return count;
     }
   }
 
