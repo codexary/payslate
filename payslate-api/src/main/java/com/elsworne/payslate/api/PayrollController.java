@@ -72,10 +72,9 @@ public class PayrollController {
   public Map<String, Integer> timesheets(
       @AuthenticationPrincipal Jwt jwt, @RequestParam("file") MultipartFile file)
       throws java.io.IOException {
-    return Map.of(
-        "rows",
-        service.upload(
-            employer(jwt), new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8)));
+    try (var input = file.getInputStream()) {
+      return Map.of("rows", service.upload(employer(jwt), input));
+    }
   }
 
   @PostMapping("/pay-runs")

@@ -66,7 +66,15 @@ public class PayrollService {
 
   @Transactional
   public int upload(String employer, String csv) {
-    var rows = TimesheetCsv.parse(csv);
+    return uploadRows(employer, TimesheetCsv.parse(csv));
+  }
+
+  @Transactional
+  public int upload(String employer, java.io.InputStream csv) {
+    return uploadRows(employer, TimesheetCsv.parse(csv));
+  }
+
+  private int uploadRows(String employer, List<TimesheetCsv.Row> rows) {
     for (var row : rows) {
       var ids =
           jdbc.queryForList(
