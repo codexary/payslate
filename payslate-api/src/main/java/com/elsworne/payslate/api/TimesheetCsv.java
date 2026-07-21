@@ -24,9 +24,12 @@ import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 
 final class TimesheetCsv {
-  record Row(String employee, LocalDateTime start, LocalDateTime end, boolean publicHoliday) {}
+  record Row(
+      String employee, LocalDateTime start, LocalDateTime end, boolean publicHoliday, long line) {}
 
   static final int MAX_DATA_ROWS = 10_000;
+  static final int MIN_YEAR = 2000;
+  static final int MAX_YEAR = 2099;
 
   private static final DateTimeFormatter AU =
       DateTimeFormatter.ofPattern("d/M/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT);
@@ -34,7 +37,7 @@ final class TimesheetCsv {
       DateTimeFormatter.ofPattern("h:mm a", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT);
 
   static List<Row> parse(String input) {
-    if (input == null) throw new IllegalArgumentException("Empty CSV");
+    if (input == null) throw new IllegalArgumentException("Line 1: Empty CSV");
     return parse(new StringReader(input));
   }
 
@@ -57,11 +60,11 @@ final class TimesheetCsv {
       String first = reader.readLine();
       reader.reset();
       reader.mark(0);
-      if (first == null) throw new IllegalArgumentException("Missing header");
+      if (first == null) throw new IllegalArgumentException("Line 1: Missing header");
       char delimiter = first.contains("\t") ? '\t' : first.contains(";") ? ';' : ',';
       try (var parser = CSVFormat.RFC4180.builder().setDelimiter(delimiter).get().parse(reader)) {
         var records = parser.iterator();
-        if (!records.hasNext()) throw new IllegalArgumentException("Missing header");
+        if (!records.hasNext()) throw new IllegalArgumentException("Line 1: Missing header");
         var header = records.next();
         checkFields(header, line);
         Map<String, Integer> columns = new HashMap<>();
@@ -83,7 +86,7 @@ final class TimesheetCsv {
           checkFields(row, line);
           if (row.size() == 1 && row.get(0).isBlank()) continue;
           if (row.size() != header.size())
-            throw new IllegalArgumentException("Wrong CSV column count");
+            throw new IllegalArgumentException("Line " + line + ": Wrong CSV column count");
           if (rows.size() == MAX_DATA_ROWS)
             throw new IllegalArgumentException("Line " + line + ": too many data rows");
           String rawName = row.get(employee);
@@ -91,15 +94,19 @@ final class TimesheetCsv {
             throw new IllegalArgumentException(
                 "Line " + line + ": employee name contains a control character");
           String name = rawName.trim();
-          if (name.isBlank()) throw new IllegalArgumentException("Empty employee");
-          LocalDate day = date(row.get(date).trim());
-          LocalDateTime from = day.atTime(time(row.get(start).trim()));
-          LocalDateTime to = day.atTime(time(row.get(end).trim()));
+          if (name.isBlank())
+            throw new IllegalArgumentException("Line " + line + ": Empty employee");
+          LocalDate day = date(row.get(date).trim(), line);
+          if (day.getYear() < MIN_YEAR || day.getYear() > MAX_YEAR)
+            throw new IllegalArgumentException("Line " + line + ": shift year must be 2000–2099");
+          LocalDateTime from = day.atTime(time(row.get(start).trim(), line));
+          LocalDateTime to = day.atTime(time(row.get(end).trim(), line));
           if (to.isBefore(from)) to = to.plusDays(1);
-          if (!to.isAfter(from)) throw new IllegalArgumentException("Empty shift");
-          rows.add(new Row(name, from, to, holiday >= 0 && holiday(row.get(holiday))));
+          if (!to.isAfter(from))
+            throw new IllegalArgumentException("Line " + line + ": Empty shift");
+          rows.add(new Row(name, from, to, holiday >= 0 && holiday(row.get(holiday), line), line));
         }
-        if (rows.isEmpty()) throw new IllegalArgumentException("No shifts");
+        if (rows.isEmpty()) throw new IllegalArgumentException("Line " + line + ": No shifts");
         return List.copyOf(rows);
       }
     } catch (CharacterCodingException e) {
@@ -109,7 +116,7 @@ final class TimesheetCsv {
         throw new IllegalArgumentException("File is not UTF-8", e);
       throw new IllegalArgumentException("Line " + line + ": invalid quoted field", e);
     } catch (IOException | java.time.DateTimeException e) {
-      throw new IllegalArgumentException("Invalid CSV", e);
+      throw new IllegalArgumentException("Line " + line + ": Invalid CSV", e);
     }
   }
 
@@ -166,7 +173,7 @@ final class TimesheetCsv {
 
   private static int column(Map<String, Integer> columns, String... aliases) {
     for (String alias : aliases) if (columns.containsKey(alias)) return columns.get(alias);
-    throw new IllegalArgumentException("Missing CSV header");
+    throw new IllegalArgumentException("Line 1: Missing CSV header");
   }
 
   private static int optionalColumn(Map<String, Integer> columns, String... aliases) {
@@ -174,27 +181,36 @@ final class TimesheetCsv {
     return -1;
   }
 
-  private static boolean holiday(String text) {
+  private static boolean holiday(String text, long line) {
     return switch (text.trim().toLowerCase(Locale.ROOT)) {
       case "true", "yes", "1" -> true;
       case "false", "no", "0", "" -> false;
-      default -> throw new IllegalArgumentException("Invalid public holiday value");
+      default ->
+          throw new IllegalArgumentException("Line " + line + ": Invalid public holiday value");
     };
   }
 
-  private static LocalDate date(String value) {
+  private static LocalDate date(String value, long line) {
     try {
       return LocalDate.parse(value);
     } catch (java.time.DateTimeException ignored) {
-      return LocalDate.parse(value, AU);
+      try {
+        return LocalDate.parse(value, AU);
+      } catch (java.time.DateTimeException error) {
+        throw new IllegalArgumentException("Line " + line + ": invalid date", error);
+      }
     }
   }
 
-  private static LocalTime time(String value) {
+  private static LocalTime time(String value, long line) {
     try {
       return LocalTime.parse(value, DateTimeFormatter.ofPattern("HH:mm"));
     } catch (java.time.DateTimeException ignored) {
-      return LocalTime.parse(value.toUpperCase(Locale.ROOT), TWELVE);
+      try {
+        return LocalTime.parse(value.toUpperCase(Locale.ROOT), TWELVE);
+      } catch (java.time.DateTimeException error) {
+        throw new IllegalArgumentException("Line " + line + ": invalid time", error);
+      }
     }
   }
 }

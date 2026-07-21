@@ -83,7 +83,8 @@ public class PayrollService {
               employer,
               row.employee());
       if (ids.size() != 1)
-        throw new IllegalArgumentException("Employee name must match exactly one employee");
+        throw new IllegalArgumentException(
+            "Line " + row.line() + ": employee name must match exactly one employee");
       jdbc.update(
           "INSERT INTO timesheets(employer_id,employee_id,starts,ends,public_holiday) VALUES(?,?,?,?,?)",
           employer,
