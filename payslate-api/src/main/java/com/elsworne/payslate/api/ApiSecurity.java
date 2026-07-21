@@ -19,10 +19,25 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.firewall.RequestRejectedHandler;
+import org.springframework.web.filter.ServerHttpObservationFilter;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 class ApiSecurity {
+  @Bean
+  RequestRejectedHandler requestRejectedHandler(JsonMapper mapper) {
+    return (request, response, error) -> {
+      ServerHttpObservationFilter.findObservationContext(request)
+          .ifPresent(context -> context.setPathPattern("UNKNOWN"));
+      response.setStatus(HttpStatus.BAD_REQUEST.value());
+      response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+      mapper.writeValue(
+          response.getOutputStream(),
+          ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "The request was rejected."));
+    };
+  }
+
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http, JsonMapper mapper) throws Exception {
     var authenticationEntryPoint = new BearerTokenAuthenticationEntryPoint();

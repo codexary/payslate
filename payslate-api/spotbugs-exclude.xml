@@ -12,7 +12,10 @@
   </Match>
   <!-- Framework endpoint inventory is informational, not a defect. -->
   <Match>
-    <Class name="com.elsworne.payslate.api.PayrollController"/>
+    <Or>
+      <Class name="com.elsworne.payslate.api.PayrollController"/>
+      <Class name="com.elsworne.payslate.api.ApiErrorController"/>
+    </Or>
     <Bug pattern="SPRING_ENDPOINT"/>
   </Match>
   <!-- Generated-key holder and statement-callback findings on the shared insert helper. -->
@@ -37,5 +40,29 @@
   <Match>
     <Class name="com.elsworne.payslate.api.TimesheetCsv"/>
     <Bug pattern="IMPROPER_UNICODE"/>
+  </Match>
+  <!-- Error dispatch renders a status only and must accept the original request method. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.ApiErrorController"/>
+    <Method name="error"/>
+    <Bug pattern="SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING"/>
+  </Match>
+  <!-- Only method and framework route template are logged, with CR and LF removed. ECS escapes the exception. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.ApiErrors"/>
+    <Method name="logFailure"/>
+    <Bug pattern="CRLF_INJECTION_LOGS"/>
+  </Match>
+  <!-- Case-insensitive matching selects only one of the fixed public event names. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.PayrollController"/>
+    <Method name="transition"/>
+    <Bug pattern="IMPROPER_UNICODE"/>
+  </Match>
+  <!-- Authentication and access failures are rethrown so Spring Security writes every 401 and 403. -->
+  <Match>
+    <Class name="com.elsworne.payslate.api.ApiErrors"/>
+    <Method name="securityFailure"/>
+    <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
   </Match>
 </FindBugsFilter>

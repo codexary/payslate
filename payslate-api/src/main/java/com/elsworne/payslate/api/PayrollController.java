@@ -99,10 +99,11 @@ public class PayrollController {
   @PostMapping("/pay-runs/{id}/{event}")
   public Map<String, String> transition(
       @AuthenticationPrincipal Jwt jwt, @PathVariable long id, @PathVariable String event) {
-    return Map.of(
-        "state",
-        service.transition(
-            employer(jwt), id, Event.valueOf(event.toUpperCase(java.util.Locale.ROOT))));
+    for (Event parsed : Event.values()) {
+      if (parsed.name().equalsIgnoreCase(event))
+        return Map.of("state", service.transition(employer(jwt), id, parsed));
+    }
+    throw new InvalidRequestException("Unknown pay-run event");
   }
 
   @GetMapping("/pay-runs/{id}/payslips/{employeeId}")

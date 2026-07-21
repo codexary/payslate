@@ -104,7 +104,7 @@ public final class PayEngine {
     BigDecimal tax = withholding(gross);
     BigDecimal available = gross.subtract(tax);
     if (deductions.compareTo(available) > 0)
-      throw new IllegalArgumentException(
+      throw new PayRejectedException(
           "Deductions exceed available pay for employee " + employeeName);
     BigDecimal retirement =
         ordinaryMoney.multiply(new BigDecimal("0.12")).setScale(2, RoundingMode.HALF_EVEN);

@@ -37,7 +37,7 @@ final class TimesheetCsv {
       DateTimeFormatter.ofPattern("h:mm a", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT);
 
   static List<Row> parse(String input) {
-    if (input == null) throw new IllegalArgumentException("Line 1: Empty CSV");
+    if (input == null) throw new InvalidRequestException("Line 1: Empty CSV");
     return parse(new StringReader(input));
   }
 
@@ -60,18 +60,18 @@ final class TimesheetCsv {
       String first = reader.readLine();
       reader.reset();
       reader.mark(0);
-      if (first == null) throw new IllegalArgumentException("Line 1: Missing header");
+      if (first == null) throw new InvalidRequestException("Line 1: Missing header");
       char delimiter = first.contains("\t") ? '\t' : first.contains(";") ? ';' : ',';
       try (var parser = CSVFormat.RFC4180.builder().setDelimiter(delimiter).get().parse(reader)) {
         var records = parser.iterator();
-        if (!records.hasNext()) throw new IllegalArgumentException("Line 1: Missing header");
+        if (!records.hasNext()) throw new InvalidRequestException("Line 1: Missing header");
         var header = records.next();
         checkFields(header, line);
         Map<String, Integer> columns = new HashMap<>();
         for (int i = 0; i < header.size(); i++) {
           String column = knownColumn(header.get(i));
           if (column != null && columns.putIfAbsent(column, i) != null)
-            throw new IllegalArgumentException("Line 1: duplicate CSV header");
+            throw new InvalidRequestException("Line 1: duplicate CSV header");
         }
         int employee = column(columns, "employee", "employee name", "staff");
         int date = column(columns, "date", "shift date");
@@ -86,37 +86,37 @@ final class TimesheetCsv {
           checkFields(row, line);
           if (row.size() == 1 && row.get(0).isBlank()) continue;
           if (row.size() != header.size())
-            throw new IllegalArgumentException("Line " + line + ": Wrong CSV column count");
+            throw new InvalidRequestException("Line " + line + ": Wrong CSV column count");
           if (rows.size() == MAX_DATA_ROWS)
-            throw new IllegalArgumentException("Line " + line + ": too many data rows");
+            throw new InvalidRequestException("Line " + line + ": too many data rows");
           String rawName = row.get(employee);
           if (rawName.chars().anyMatch(c -> c < 32 || c == 127))
-            throw new IllegalArgumentException(
+            throw new InvalidRequestException(
                 "Line " + line + ": employee name contains a control character");
           String name = rawName.trim();
           if (name.isBlank())
-            throw new IllegalArgumentException("Line " + line + ": Empty employee");
+            throw new InvalidRequestException("Line " + line + ": Empty employee");
           LocalDate day = date(row.get(date).trim(), line);
           if (day.getYear() < MIN_YEAR || day.getYear() > MAX_YEAR)
-            throw new IllegalArgumentException("Line " + line + ": shift year must be 2000–2099");
+            throw new InvalidRequestException("Line " + line + ": shift year must be 2000–2099");
           LocalDateTime from = day.atTime(time(row.get(start).trim(), line));
           LocalDateTime to = day.atTime(time(row.get(end).trim(), line));
           if (to.isBefore(from)) to = to.plusDays(1);
           if (!to.isAfter(from))
-            throw new IllegalArgumentException("Line " + line + ": Empty shift");
+            throw new InvalidRequestException("Line " + line + ": Empty shift");
           rows.add(new Row(name, from, to, holiday >= 0 && holiday(row.get(holiday), line), line));
         }
-        if (rows.isEmpty()) throw new IllegalArgumentException("Line " + line + ": No shifts");
+        if (rows.isEmpty()) throw new InvalidRequestException("Line " + line + ": No shifts");
         return List.copyOf(rows);
       }
     } catch (CharacterCodingException e) {
-      throw new IllegalArgumentException("File is not UTF-8", e);
+      throw new InvalidRequestException("File is not UTF-8", e);
     } catch (UncheckedIOException e) {
       if (e.getCause() instanceof CharacterCodingException)
-        throw new IllegalArgumentException("File is not UTF-8", e);
-      throw new IllegalArgumentException("Line " + line + ": invalid quoted field", e);
+        throw new InvalidRequestException("File is not UTF-8", e);
+      throw new InvalidRequestException("Line " + line + ": invalid quoted field", e);
     } catch (IOException | java.time.DateTimeException e) {
-      throw new IllegalArgumentException("Line " + line + ": Invalid CSV", e);
+      throw new InvalidRequestException("Line " + line + ": Invalid CSV", e);
     }
   }
 
@@ -134,9 +134,9 @@ final class TimesheetCsv {
   private static void checkFields(org.apache.commons.csv.CSVRecord record, long line) {
     for (String field : record) {
       if (field.indexOf('\n') >= 0 || field.indexOf('\r') >= 0)
-        throw new IllegalArgumentException("Line " + line + ": quoted field contains a line break");
+        throw new InvalidRequestException("Line " + line + ": quoted field contains a line break");
       if (field.indexOf('\uFEFF') >= 0)
-        throw new IllegalArgumentException("Line " + line + ": unexpected BOM");
+        throw new InvalidRequestException("Line " + line + ": unexpected BOM");
     }
   }
 
@@ -152,7 +152,7 @@ final class TimesheetCsv {
     public int read() throws IOException {
       int value = super.read();
       if (carriageReturn && value != '\n')
-        throw new IllegalArgumentException("Line " + line + ": bare carriage return");
+        throw new InvalidRequestException("Line " + line + ": bare carriage return");
       carriageReturn = value == '\r';
       if (value == '\n') line++;
       return value;
@@ -173,7 +173,7 @@ final class TimesheetCsv {
 
   private static int column(Map<String, Integer> columns, String... aliases) {
     for (String alias : aliases) if (columns.containsKey(alias)) return columns.get(alias);
-    throw new IllegalArgumentException("Line 1: Missing CSV header");
+    throw new InvalidRequestException("Line 1: Missing CSV header");
   }
 
   private static int optionalColumn(Map<String, Integer> columns, String... aliases) {
@@ -186,7 +186,7 @@ final class TimesheetCsv {
       case "true", "yes", "1" -> true;
       case "false", "no", "0", "" -> false;
       default ->
-          throw new IllegalArgumentException("Line " + line + ": Invalid public holiday value");
+          throw new InvalidRequestException("Line " + line + ": Invalid public holiday value");
     };
   }
 
@@ -197,7 +197,7 @@ final class TimesheetCsv {
       try {
         return LocalDate.parse(value, AU);
       } catch (java.time.DateTimeException error) {
-        throw new IllegalArgumentException("Line " + line + ": invalid date", error);
+        throw new InvalidRequestException("Line " + line + ": invalid date", error);
       }
     }
   }
@@ -209,7 +209,7 @@ final class TimesheetCsv {
       try {
         return LocalTime.parse(value.toUpperCase(Locale.ROOT), TWELVE);
       } catch (java.time.DateTimeException error) {
-        throw new IllegalArgumentException("Line " + line + ": invalid time", error);
+        throw new InvalidRequestException("Line " + line + ": invalid time", error);
       }
     }
   }

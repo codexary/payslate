@@ -4,6 +4,7 @@ import com.elsworne.payslate.bank.AbaFile;
 import com.elsworne.payslate.engine.LegacyPayEngine;
 import com.elsworne.payslate.engine.PayCalendar;
 import com.elsworne.payslate.engine.PayEngine;
+import com.elsworne.payslate.engine.PayRejectedException;
 import com.elsworne.payslate.engine.payrun.PayRun;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
@@ -46,13 +47,14 @@ public class PayrollService {
         || name.isBlank()
         || rate == null
         || rate.signum() < 0
+        || employment == null
         || !List.of("PERMANENT", "CASUAL").contains(employment)
         || bsb == null
         || !bsb.matches("[0-9]{3}-[0-9]{3}")
         || account == null
         || !account.matches("[0-9]{1,9}")
         || deductions == null
-        || deductions.signum() < 0) throw new IllegalArgumentException("Invalid employee");
+        || deductions.signum() < 0) throw new InvalidRequestException("Invalid employee");
     return insert(
         "INSERT INTO employees(employer_id,name,employment,hourly_rate,bsb,account,deductions) VALUES(?,?,?,?,?,?,?)",
         employer,
@@ -83,7 +85,7 @@ public class PayrollService {
               employer,
               row.employee());
       if (ids.size() != 1)
-        throw new IllegalArgumentException(
+        throw new InvalidRequestException(
             "Line " + row.line() + ": employee name must match exactly one employee");
       jdbc.update(
           "INSERT INTO timesheets(employer_id,employee_id,starts,ends,public_holiday) VALUES(?,?,?,?,?)",
@@ -108,7 +110,7 @@ public class PayrollService {
 
   public List<Map<String, Object>> searchEmployees(String employer, String searchText) {
     if (searchText == null || searchText.isBlank())
-      throw new IllegalArgumentException("Missing search text");
+      throw new InvalidRequestException("Missing search text");
     String sql =
         "SELECT id,name,hourly_rate FROM employees WHERE employer_id = ? AND name LIKE ? ORDER BY id";
     return jdbc.queryForList(sql, employer, "%" + searchText + "%");
@@ -120,7 +122,7 @@ public class PayrollService {
         || employer.isBlank()
         || start == null
         || end == null
-        || end.isBefore(start)) throw new IllegalArgumentException("Invalid pay period");
+        || end.isBefore(start)) throw new InvalidRequestException("Invalid pay period");
     return insert(
         "INSERT INTO pay_runs(employer_id,state,created_at,period_start,period_end) VALUES(?,?,?,?,?)",
         employer,
@@ -136,20 +138,28 @@ public class PayrollService {
       PayCalendar.Frequency frequency,
       LocalDate anchorPayDate,
       LocalDate payDate) {
-    if (payDate == null) throw new IllegalArgumentException("Invalid pay date");
+    if (payDate == null
+        || frequency == null
+        || anchorPayDate == null
+        || payDate.getYear() < 1
+        || payDate.getYear() > 9999) throw new InvalidRequestException("Invalid calendar input");
     var period =
         PayCalendar.periodsForYear(frequency, anchorPayDate, payDate.getYear()).stream()
             .filter(candidate -> candidate.payDate().equals(payDate))
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Pay date is not on the calendar"));
+            .orElseThrow(() -> new InvalidRequestException("Pay date is not on the calendar"));
     return createRun(employer, period.startInclusive(), period.endExclusive().minusDays(1));
   }
 
   @Transactional
   public String transition(String employer, long id, PayRun.Event event) {
     String current = state(employer, id);
-    var model = PayRun.restore(PayRun.State.valueOf(current));
-    model.apply(event);
+    var model = PayRun.restore(storedEnum(PayRun.State.class, current));
+    try {
+      model.apply(event);
+    } catch (IllegalStateException error) {
+      throw new PayRunConflictException();
+    }
     if (event == PayRun.Event.CALCULATE) calculate(employer, id);
     jdbc.update(
         "UPDATE pay_runs SET state = ? WHERE id = ? AND employer_id = ?",
@@ -198,13 +208,18 @@ public class PayrollService {
               start.atStartOfDay(),
               end.plusDays(1).atStartOfDay());
       if (shifts.isEmpty()) continue;
-      var result =
-          engine.calculate(
-              (String) employee.get("name"),
-              (BigDecimal) employee.get("hourly_rate"),
-              LegacyPayEngine.Employment.valueOf((String) employee.get("employment")),
-              shifts,
-              (BigDecimal) employee.get("deductions"));
+      PayEngine.Result result;
+      try {
+        result =
+            engine.calculate(
+                (String) employee.get("name"),
+                (BigDecimal) employee.get("hourly_rate"),
+                storedEnum(LegacyPayEngine.Employment.class, (String) employee.get("employment")),
+                shifts,
+                (BigDecimal) employee.get("deductions"));
+      } catch (PayRejectedException error) {
+        throw new InvalidRequestException(error.getMessage(), error);
+      }
       jdbc.update(
           "INSERT INTO payslips(employer_id,run_id,employee_id,gross,tax,net) VALUES(?,?,?,?,?,?)",
           employer,
@@ -229,8 +244,7 @@ public class PayrollService {
   }
 
   public String aba(String employer, long runId) {
-    if (!state(employer, runId).equals("PAID"))
-      throw new IllegalStateException("Pay run is not paid");
+    if (!state(employer, runId).equals("PAID")) throw new PayRunConflictException();
     var payments = new ArrayList<AbaFile.Payment>();
     jdbc.query(
         "SELECT e.bsb,e.account,e.name,p.net FROM payslips p JOIN employees e ON e.id=p.employee_id AND e.employer_id=p.employer_id WHERE p.employer_id=? AND p.run_id=? ORDER BY e.id",
@@ -253,6 +267,14 @@ public class PayrollService {
             "123-456",
             "87654321",
             payments));
+  }
+
+  private static <E extends Enum<E>> E storedEnum(Class<E> type, String value) {
+    try {
+      return Enum.valueOf(type, value);
+    } catch (IllegalArgumentException error) {
+      throw new IllegalStateException("Invalid stored payroll state", error);
+    }
   }
 
   private long insert(String sql, Object... values) {
