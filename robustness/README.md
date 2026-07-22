@@ -24,6 +24,8 @@ A response may trigger several checks:
 
 The event target creates one pay run for 6–12 July 2026 and sends random names or mutations of `calculate`, `approve`, `pay` and `reverse`, as listed in the API specification. `all` uses only random and mutation for this target; grammar is unavailable. Every event is encoded as a single URL path segment. The pay run is shared, so later transition responses may depend on earlier requests and reduction attempts.
 
+`--target employees` posts JSON bodies to `POST /v1/employees`. Random generation varies fields and types; mutation changes one field of a valid body, including name lengths and control characters, `1e20`, `-0`, `12.345`, long digit strings and wrong types. `all` runs random and mutation only; grammar and `valid-rejected` do not apply. The other four checks are unchanged. No employee setup is needed, accepted requests create employees, and saved `input.bin` files contain the JSON body.
+
 ## Run locally
 
 Use Python 3.12; no third-party Python packages are needed. See the [root setup instructions](../README.md#payslate-online-api) for Java, Docker and the development issuer. From the repository root, build the API jar before Compose builds its image:

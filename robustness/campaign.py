@@ -76,6 +76,8 @@ def setup(client, create=False):
 
 
 def wire_request(data, target, run_id=None):
+    if target == 'employees':
+        return '/v1/employees', data, 'application/json'
     if target == 'pay-run-events':
         return f'/v1/pay-runs/{run_id}/' + urllib.parse.quote_from_bytes(data, safe=''), b'', None
     boundary = 'payslate-' + hashlib.sha256(data).hexdigest()[:24]
@@ -134,7 +136,7 @@ def save_report(path, report):
 
 def run(args):
     client = Client(args.base_url, args.token)
-    if args.target == 'timesheets' or args.setup:
+    if args.target != 'employees' and (args.target == 'timesheets' or args.setup):
         setup(client, args.setup)
     run_id = None
     if args.target == 'pay-run-events':
@@ -225,7 +227,8 @@ def run(args):
                         description += f'Content-Type: {media_type}\n'
                     description += f'Content-Length: {len(body)}\n\n'
                     description += ('Multipart field file: input.bin (filename candidate.csv)\n'
-                                    if args.target == 'timesheets' else 'Event path segment: percent-encoded bytes from input.bin\n')
+                                    if args.target == 'timesheets' else 'JSON body: input.bin\n'
+                                    if args.target == 'employees' else 'Event path segment: percent-encoded bytes from input.bin\n')
                     (folder / 'request.txt').write_text(description, encoding='utf-8')
                     response_text = (f'HTTP {final_response.status}\nElapsed-Seconds: {final_response.elapsed:.6f}\n'
                                      + ''.join(f'{k}: {v}\n' for k, v in final_response.headers.items()) + '\n')
@@ -259,7 +262,7 @@ def main():
     parser.add_argument('--strategy', choices=('all', 'random', 'mutation', 'grammar'), default='all')
     parser.add_argument('--budget', type=int, default=300, help='total candidates, shared round-robin across strategies')
     parser.add_argument('--seed', type=int, default=20260716)
-    parser.add_argument('--target', choices=('timesheets', 'pay-run-events'), default='timesheets')
+    parser.add_argument('--target', choices=('timesheets', 'pay-run-events', 'employees'), default='timesheets')
     parser.add_argument('--setup', action='store_true')
     parser.add_argument('--slow-seconds', type=float, default=2.0)
     parser.add_argument('--minimise-requests', type=int, default=40)
@@ -269,8 +272,8 @@ def main():
         parser.error('budget must be positive, or zero with --setup')
     if not 1 <= args.minimise_requests <= 200 or not 0 < args.slow_seconds < float('inf'):
         parser.error('minimise-requests must be 1–200 and slow-seconds must be positive and finite')
-    if args.target == 'pay-run-events' and args.strategy == 'grammar':
-        parser.error('pay-run-events supports random, mutation or all')
+    if args.target != 'timesheets' and args.strategy == 'grammar':
+        parser.error(f'{args.target} supports random, mutation or all')
     url = urllib.parse.urlsplit(args.base_url)
     if url.scheme not in ('http', 'https') or not url.netloc or url.username or url.password or url.query or url.fragment:
         parser.error('base-url must be an HTTP(S) URL without credentials, query or fragment')

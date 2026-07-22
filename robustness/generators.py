@@ -162,6 +162,34 @@ def large_seed(rng):
     return b''.join(rows)
 
 
+EMPLOYEE_BODY = {'name': 'Liam Walsh', 'employment': 'PERMANENT', 'hourlyRate': 20,
+                 'bsb': '123-456', 'account': '12345678', 'deductions': 0}
+NUMBER_TOKENS = ('0', '-0', '-1', '12.345', '1e20', '9999.99', '10000',
+                 '999999.99', '1000000', '9' * 1000, 'null', 'true', '[]', '{}',
+                 '"12.345"', '"not a number"')
+NAME_VALUES = ('', ' ', 'x' * 100, 'x' * 101, 'x' * 4096, 'Liam\0 Walsh',
+               'Liam\x1f Walsh', 'Liam\x7f Walsh', '\tLiam', ' Renée Dubois ',
+               None, 123, True, [], {})
+
+
+def employee_json(rng, mutation=False):
+    """Keep JSON syntax intact while exploring field values and numeric lexemes."""
+    fields = {key: json.dumps(value) for key, value in EMPLOYEE_BODY.items()}
+    keys = (rng.choice(tuple(fields)),) if mutation else tuple(fields)
+    for key in keys:
+        if key == 'name':
+            value = rng.choice(NAME_VALUES)
+            if not mutation and rng.randrange(2):
+                value = ''.join(rng.choices('Abé中 \x00\x1f\x7f',
+                                            k=rng.choice((0, 1, 99, 100, 101, 4096))))
+            fields[key] = json.dumps(value)
+        elif key in ('hourlyRate', 'deductions'):
+            fields[key] = rng.choice(NUMBER_TOKENS)
+        else:
+            fields[key] = json.dumps(rng.choice((EMPLOYEE_BODY[key], '', None, 7, [], {})))
+    return ('{' + ','.join(json.dumps(key) + ':' + value for key, value in fields.items()) + '}').encode('utf-8')
+
+
 class Generators:
     def __init__(self, seed):
         # Separate streams: changing strategy interleaving cannot change its inputs.
@@ -172,6 +200,10 @@ class Generators:
 
     def next(self, strategy, target='timesheets'):
         rng = self.rng[strategy]
+        if target == 'employees':
+            if strategy not in ('random', 'mutation'):
+                raise ValueError('employee target supports random and mutation only')
+            return Candidate(employee_json(rng, mutation=strategy == 'mutation'))
         if target == 'pay-run-events':
             if strategy == 'grammar':
                 raise ValueError('event target supports random and mutation only')

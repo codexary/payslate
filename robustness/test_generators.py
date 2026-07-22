@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import random
 import unittest
 
@@ -18,6 +19,37 @@ class GeneratorTests(unittest.TestCase):
             a, b = Generators(7), Generators(7)
             self.assertEqual([a.next(strategy, 'pay-run-events') for _ in range(30)],
                              [b.next(strategy, 'pay-run-events') for _ in range(30)])
+
+    def test_employee_candidates_are_deterministic_json_without_row_expectations(self):
+        for strategy in ('random', 'mutation'):
+            a, b = Generators(42), Generators(42)
+            values = []
+            for _ in range(1000):
+                candidate = a.next(strategy, 'employees')
+                self.assertEqual(candidate, b.next(strategy, 'employees'))
+                self.assertIsNone(candidate.expected_rows)
+                body = json.loads(candidate.data)
+                self.assertEqual(set(body), {'name', 'employment', 'hourlyRate',
+                                             'bsb', 'account', 'deductions'})
+                values.append(body)
+            self.assertTrue(any(isinstance(x['name'], str) and len(x['name']) == 101
+                                for x in values))
+            self.assertTrue(any(isinstance(x['name'], str) and '\0' in x['name']
+                                for x in values))
+            for number in (1e20, 12.345, int('9' * 1000)):
+                self.assertTrue(any(x['hourlyRate'] == number for x in values))
+            self.assertTrue(any(isinstance(x['hourlyRate'], (list, dict)) for x in values))
+        with self.assertRaises(ValueError):
+            Generators(42).next('grammar', 'employees')
+
+    def test_employee_mutations_change_at_most_one_field_and_keep_negative_zero(self):
+        from generators import EMPLOYEE_BODY
+        generator = Generators(7)
+        candidates = [generator.next('mutation', 'employees').data for _ in range(1000)]
+        self.assertTrue(any(b':-0' in data for data in candidates))
+        for data in candidates:
+            body = json.loads(data)
+            self.assertLessEqual(sum(body[k] != v for k, v in EMPLOYEE_BODY.items()), 1)
 
     def test_grammar_width_counts_and_contract(self):
         for seed in (1, 42, 20260716):

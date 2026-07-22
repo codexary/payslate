@@ -24,6 +24,8 @@
 
 事件目标会创建一个覆盖 2026 年 7 月 6–12 日的工资批次，然后发送随机事件名，或对 API 规范中的 `calculate`、`approve`、`pay`、`reverse` 做变异。该目标的 `all` 只包含 random 和 mutation，不支持 grammar。每个事件都编码为一个 URL 路径段。所有请求共用一个批次，因此后续状态转换的响应可能受前面请求和缩减尝试的影响。
 
+`--target employees` 向 `POST /v1/employees` 发送 JSON 请求体。随机策略改变字段值及类型；变异策略从合法请求体出发，每次修改一个字段，覆盖姓名长度和控制字符、`1e20`、`-0`、`12.345`、超长数字串及错误类型。`all` 仅运行 random 和 mutation；grammar 和 `valid-rejected` 不适用，其余四项检查保持不变。此目标无需初始化员工，成功请求会创建员工，保存的 `input.bin` 即为 JSON 请求体。
+
 ## 本地运行
 
 使用 Python 3.12，无需安装第三方 Python 包。Java、Docker 和开发身份发行者的准备步骤见[根目录说明](../README.zh-CN.md#payslate-online-api)。在仓库根目录执行以下命令；Compose 构建镜像前，须先构建 API jar：

@@ -91,6 +91,16 @@ class OracleTests(unittest.TestCase):
         self.assertIn(data, body)
         self.assertTrue(media_type.startswith('multipart/form-data; boundary='))
 
+    def test_employee_wire_body_and_oracles(self):
+        from generators import Generators
+        for strategy in ('random', 'mutation'):
+            candidate = Generators(42).next(strategy, 'employees')
+            self.assertEqual(wire_request(candidate.data, 'employees'),
+                             ('/v1/employees', candidate.data, 'application/json'))
+            self.assertNotIn('valid-rejected', check(response(400), candidate.expected_rows))
+            result = response(500, {'status': 500, 'title': 'Error'}, 'application/problem+json')
+            self.assertEqual(check(result, candidate.expected_rows), ['server-error'])
+
     def test_setup_does_not_duplicate_existing_names(self):
         class FakeClient:
             def json(self, method, path, body=None):
