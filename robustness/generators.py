@@ -16,7 +16,7 @@ REFERENCE = re.compile(r'<([a-z0-9_]+)>')
 SHARED = {'delimiter': 'delimiter', 'newline': 'newline',
           'holiday_header_slot': 'holiday', 'holiday_value_slot': 'holiday'}
 EMPLOYEES = ('Liam Walsh', 'Renée Dubois', 'Mia Chen', 'Walsh, Liam',
-             'Walsh; Liam', 'Walsh\t Liam', 'Renée "Ren" Dubois')
+             'Walsh; Liam', 'Renée "Ren" Dubois')
 EVENTS = (b'calculate', b'approve', b'pay', b'reverse')
 TOKENS = (b'"', b'\r', b'\0', b'\t', b';', b'\xe9', b'+999999999',
           b'0001', b'24:00', b'13:61', '\ufeff'.encode('utf-8'))

@@ -105,6 +105,27 @@ class UnitTimesheetCsvRobustnessTest {
   }
 
   @Test
+  void rejectsOverlongNameWithItsLineWithoutEchoingIt() {
+    String name = "x".repeat(101);
+    var error =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> TimesheetCsv.parse(HEADER + name + ",2026-07-06,09:00,17:00\n"));
+    assertThat(error).hasMessageContaining(LINE_TWO).hasMessageContaining("name");
+    assertThat(error.getMessage()).doesNotContain(name);
+  }
+
+  @Test
+  void acceptsAndTrimsOneHundredCharacterName() {
+    String name = "x".repeat(100);
+    assertThat(
+            TimesheetCsv.parse(HEADER + "  " + name + "  ,2026-07-06,09:00,17:00\n")
+                .getFirst()
+                .employee())
+        .isEqualTo(name);
+  }
+
+  @Test
   void acceptsTabsAsDelimiters() {
     assertThat(TimesheetCsv.parse((HEADER + ROW).replace(',', '\t'))).hasSize(1);
   }

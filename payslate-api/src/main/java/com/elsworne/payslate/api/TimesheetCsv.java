@@ -89,13 +89,12 @@ final class TimesheetCsv {
             throw new InvalidRequestException("Line " + line + ": Wrong CSV column count");
           if (rows.size() == MAX_DATA_ROWS)
             throw new InvalidRequestException("Line " + line + ": too many data rows");
-          String rawName = row.get(employee);
-          if (rawName.chars().anyMatch(c -> c < 32 || c == 127))
-            throw new InvalidRequestException(
-                "Line " + line + ": employee name contains a control character");
-          String name = rawName.trim();
-          if (name.isBlank())
-            throw new InvalidRequestException("Line " + line + ": Empty employee");
+          String name;
+          try {
+            name = EmployeeName.normalize(row.get(employee));
+          } catch (InvalidRequestException error) {
+            throw new InvalidRequestException("Line " + line + ": " + error.getMessage(), error);
+          }
           LocalDate day = date(row.get(date).trim(), line);
           if (day.getYear() < MIN_YEAR || day.getYear() > MAX_YEAR)
             throw new InvalidRequestException("Line " + line + ": shift year must be 2000–2099");

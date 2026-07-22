@@ -1,5 +1,6 @@
 package com.elsworne.payslate.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -10,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -25,6 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 @AutoConfigureMockMvc
 class SystemEmployeeFieldsTest {
   @Autowired MockMvc mvc;
+  @Autowired PayrollService service;
   @MockitoBean JwtDecoder decoder;
 
   @Test
@@ -76,6 +80,46 @@ class SystemEmployeeFieldsTest {
     create("Liam Walsh", "0", "0")
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").isNumber());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"10000", "-0.01"})
+  void rejectsHourlyRateOutsideProductRange(String rate) throws Exception {
+    badRequest("Liam Walsh", rate, "0", "hourlyRate");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"1000000", "-0.01", "12.345"})
+  void rejectsInvalidDeductions(String deductions) throws Exception {
+    badRequest("Liam Walsh", "20", deductions, "deductions");
+  }
+
+  @Test
+  void acceptsMaximumDeductionsAndNegativeZeroRate() throws Exception {
+    create("Liam Walsh", "-0", "999999.99").andExpect(status().isOk());
+  }
+
+  @Test
+  void trimsStoredNameAndMatchesTimesheetName() throws Exception {
+    var result =
+        create("  " + "x".repeat(100) + "  ", "20", "0").andExpect(status().isOk()).andReturn();
+    long id =
+        new JsonMapper().readTree(result.getResponse().getContentAsString()).path("id").asLong();
+    assertThat(service.employee("employee-fields", id).get("name")).isEqualTo("x".repeat(100));
+    // Use a unique name to avoid depending on other tests' employee inserts.
+    String unique = "Trimmed " + java.util.UUID.randomUUID();
+    create("  " + unique + "  ", "20", "0").andExpect(status().isOk());
+    assertThat(
+            service.upload(
+                "employee-fields",
+                "employee,date,start,end\n  " + unique + "  ,2026-07-06,09:00,17:00\n"))
+        .isEqualTo(1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "   ", "\tLiam", "Liam\u007f"})
+  void rejectsBlankNamesAndControlsBeforeTrimming(String name) throws Exception {
+    badRequest(name, "20", "0", "name");
   }
 
   private void badRequest(String name, String rate, String deductions, String field)

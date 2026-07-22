@@ -22,6 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PayrollService {
+  private static final BigDecimal MAX_HOURLY_RATE = new BigDecimal("9999.99");
+  private static final BigDecimal MAX_DEDUCTIONS = new BigDecimal("999999.99");
+  private static final int MONEY_SCALE = 2;
+
   private final JdbcTemplate jdbc;
   private final PayEngine engine;
   private final AbaFile aba = new AbaFile();
@@ -41,29 +45,33 @@ public class PayrollService {
       String bsb,
       String account,
       BigDecimal deductions) {
+    String normalizedName = EmployeeName.normalize(name);
+    validateAmount(rate, MAX_HOURLY_RATE, "hourlyRate");
+    validateAmount(deductions, MAX_DEDUCTIONS, "deductions");
     if (employer == null
         || employer.isBlank()
-        || name == null
-        || name.isBlank()
-        || rate == null
-        || rate.signum() < 0
         || employment == null
         || !List.of("PERMANENT", "CASUAL").contains(employment)
         || bsb == null
         || !bsb.matches("[0-9]{3}-[0-9]{3}")
         || account == null
-        || !account.matches("[0-9]{1,9}")
-        || deductions == null
-        || deductions.signum() < 0) throw new InvalidRequestException("Invalid employee");
+        || !account.matches("[0-9]{1,9}")) throw new InvalidRequestException("Invalid employee");
     return insert(
         "INSERT INTO employees(employer_id,name,employment,hourly_rate,bsb,account,deductions) VALUES(?,?,?,?,?,?,?)",
         employer,
-        name,
+        normalizedName,
         employment,
         rate,
         bsb,
         account,
         deductions);
+  }
+
+  private static void validateAmount(BigDecimal value, BigDecimal maximum, String field) {
+    if (value == null || value.signum() < 0 || value.compareTo(maximum) > 0)
+      throw new InvalidRequestException(field + " is outside the allowed range");
+    if (value.stripTrailingZeros().scale() > MONEY_SCALE)
+      throw new InvalidRequestException(field + " must have at most two decimals");
   }
 
   @Transactional

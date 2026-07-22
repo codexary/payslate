@@ -65,7 +65,8 @@
   ],
   "quoted_name": [
     "\"<plain_name>\"",
-    "\"Walsh<delimiter> Liam\"",
+    "\"Walsh, Liam\"",
+    "\"Walsh; Liam\"",
     "\"Renée \"\"Ren\"\" Dubois\""
   ],
   "date": [
