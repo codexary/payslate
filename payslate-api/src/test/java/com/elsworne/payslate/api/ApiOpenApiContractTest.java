@@ -132,13 +132,17 @@ class ApiOpenApiContractTest {
             Map.entry("401", "Unauthorized"),
             Map.entry("403", "Forbidden"),
             Map.entry("404", "NotFound"),
-            Map.entry("409", "Conflict"));
+            Map.entry("409", "Conflict"),
+            Map.entry("413", "PayloadTooLarge"),
+            Map.entry("500", "InternalError"));
     for (var path : map(document.get("paths")).entrySet()) {
       for (var method :
           Set.of("get", "put", "post", "delete", "options", "head", "patch", "trace")) {
         if (!map(path.getValue()).containsKey(method)) continue;
         var responses = map(map(map(path.getValue()).get(method)).get("responses"));
-        assertThat(responses).as("%s %s", method, path.getKey()).containsKeys("401", "403");
+        assertThat(responses).as("%s %s", method, path.getKey()).containsKeys("401", "403", "500");
+        if (path.getKey().equals("/v1/timesheets") && method.equals("post"))
+          assertThat(responses).containsKey("413");
         if (path.getKey().contains("{")) assertThat(responses).containsKey("404");
         for (var error : errors.entrySet())
           if (responses.containsKey(error.getKey()))
