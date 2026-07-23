@@ -14,12 +14,14 @@ ROOT = Path(__file__).resolve().parent
 GRAMMAR = json.loads((ROOT / 'grammar.json').read_text(encoding='utf-8'))
 REFERENCE = re.compile(r'<([a-z0-9_]+)>')
 SHARED = {'delimiter': 'delimiter', 'newline': 'newline',
-          'holiday_header_slot': 'holiday', 'holiday_value_slot': 'holiday'}
+          'holiday_header_slot': 'holiday', 'holiday_value_slot': 'holiday',
+          'notes_header_slot': 'notes', 'notes_value_slot': 'notes',
+          'break_header_slot': 'break', 'break_value_slot': 'break'}
 EMPLOYEES = ('Liam Walsh', 'Renée Dubois', 'Mia Chen', 'Walsh, Liam',
              'Walsh; Liam', 'Renée "Ren" Dubois')
 EVENTS = (b'calculate', b'approve', b'pay', b'reverse')
 TOKENS = (b'"', b'\r', b'\0', b'\t', b';', b'\xe9', b'+999999999',
-          b'0001', b'24:00', b'13:61', '\ufeff'.encode('utf-8'))
+          b'"quoted\nline"', b'0001', b'24:00', b'13:61', '\ufeff'.encode('utf-8'))
 ALIASES = {'employee': 'employee', 'employee name': 'employee', 'staff': 'employee',
            'date': 'date', 'shift date': 'date', 'start': 'start',
            'start time': 'start', 'end': 'end', 'end time': 'end',
@@ -60,7 +62,7 @@ def grammar(rng):
 def contract_rows(data, employees=EMPLOYEES):
     """Independent acceptance guard for shrinking valid inputs; None means invalid.
 
-    Quoted newlines are excluded because ADR 0003 leaves their policy undecided.
+    ADR 0012 ignores unknown columns and rejects quoted line breaks.
     Uses the public format contract, never the product parser's response.
     """
     try:
@@ -71,8 +73,9 @@ def contract_rows(data, employees=EMPLOYEES):
         for delimiter in (',', ';', '\t'):
             fields = next(csv.reader([first], delimiter=delimiter, strict=True))
             header = [ALIASES.get(field.lower()) for field in fields]
-            if (None not in header and len(set(header)) == len(header)
-                    and {'employee', 'date', 'start', 'end'} <= set(header)):
+            known = [field for field in header if field is not None]
+            if (len(set(known)) == len(known)
+                    and {'employee', 'date', 'start', 'end'} <= set(known)):
                 break
         else:
             return None

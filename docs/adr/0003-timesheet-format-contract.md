@@ -6,6 +6,8 @@ English | [简体中文](0003-timesheet-format-contract.zh-CN.md)
 
 Accepted on 2026-03-20.
 
+Partly amended by ADR 0012 (unknown extra columns are ignored).
+
 ## Context
 
 The [timesheet format prototype](https://github.com/codexary/payslate-spike-timesheet-formats), explored on 2026-03-16 through 2026-03-19, separates format choices before the product importer is implemented. Its `TimesheetImporterTest` contains 22 test cases: 12 supported and 10 rejected representatives. The [findings](https://github.com/codexary/payslate-spike-timesheet-formats/blob/main/FINDINGS.md) distinguish behaviour exercised by those tests from the wider proposed contract. Synthetic text does not establish interoperability with real vendor exports, streaming behaviour or the product API.

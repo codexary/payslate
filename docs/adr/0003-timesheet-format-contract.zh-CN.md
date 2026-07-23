@@ -6,6 +6,8 @@
 
 2026-03-20 采纳。
 
+部分内容由 ADR 0012 修订（忽略未知的附加列）。
+
 ## 背景
 
 团队于 2026-03-16 至 2026-03-19 通过[工时表格式原型](https://github.com/codexary/payslate-spike-timesheet-formats)，在产品导入器实现前梳理格式选择。`TimesheetImporterTest` 包含 22 个测试案例：12 个支持类代表、10 个拒绝类代表。[原型结论](https://github.com/codexary/payslate-spike-timesheet-formats/blob/main/FINDINGS.zh-CN.md)区分了这些测试实际检查的行为与更完整的目标契约。合成文本不能验证真实厂商导出文件、流式处理或产品 API。

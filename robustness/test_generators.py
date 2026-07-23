@@ -52,6 +52,7 @@ class GeneratorTests(unittest.TestCase):
             self.assertLessEqual(sum(body[k] != v for k, v in EMPLOYEE_BODY.items()), 1)
 
     def test_grammar_width_counts_and_contract(self):
+        columns = set()
         for seed in (1, 42, 20260716):
             generator = Generators(seed)
             for _ in range(300):
@@ -62,10 +63,54 @@ class GeneratorTests(unittest.TestCase):
                 rows = [row for row in csv.reader(io.StringIO(text, newline=''),
                                                   delimiter=delimiter, strict=True) if row]
                 self.assertTrue(all(len(row) == len(rows[0]) for row in rows))
+                columns.add(('notes' in rows[0], 'break minutes' in rows[0]))
+                self.assertFalse(any('\n' in field or '\r' in field
+                                     for row in rows for field in row))
                 self.assertEqual(len(rows) - 1, candidate.expected_rows)
                 self.assertEqual(contract_rows(candidate.data), candidate.expected_rows,
                                  candidate.data)
                 self.assertTrue(all(row[0] in EMPLOYEES for row in rows[1:]))
+        self.assertEqual(columns, {(False, False), (False, True),
+                                   (True, False), (True, True)})
+
+    def test_contract_ignores_extra_columns_but_rejects_duplicate_known_columns(self):
+        for extra in ('notes,break minutes', 'notes,notes', 'custom,other'):
+            data = (f'employee,date,start,end,{extra}\n'
+                    'Liam Walsh,2026-07-06,09:00,17:00,checked,30\n').encode()
+            self.assertEqual(contract_rows(data), 1)
+        for extra in ('employee', 'Employee Name', 'STAFF', 'date', 'START TIME',
+                      'end', 'End Time'):
+            data = (f'employee,date,start,end,{extra}\n'
+                    'Liam Walsh,2026-07-06,09:00,17:00,ignored\n').encode()
+            self.assertIsNone(contract_rows(data), data)
+        self.assertIsNone(contract_rows(
+            b'employee,date,start,end,holiday,PUBLIC_HOLIDAY\n'
+            b'Liam Walsh,2026-07-06,09:00,17:00,true,true\n'))
+
+    def test_contract_rejects_quoted_line_breaks_in_ignored_columns(self):
+        for newline in (b'\n', b'\r\n'):
+            data = (b'employee,date,start,end,notes\n'
+                    b'Liam Walsh,2026-07-06,09:00,17:00,"first' + newline + b'second"\n')
+            self.assertIsNone(contract_rows(data), data)
+
+    def test_mutation_covers_quoted_line_breaks(self):
+        from generators import TOKENS
+
+        class QuotedLineBreakOnly:
+            def randint(self, a, b):
+                return 1
+
+            def choice(self, values):
+                return b'"quoted\nline"' if values is TOKENS else 'token'
+
+            def randrange(self, stop):
+                return stop - 2
+
+        data = (b'employee,date,start,end,notes\n'
+                b'Liam Walsh,2026-07-06,09:00,17:00,\n')
+        result = mutate(data, QuotedLineBreakOnly())
+        self.assertIn(b'"quoted\nline"', result)
+        self.assertIsNone(contract_rows(result))
 
     def test_large_seed_is_deterministic_and_valid(self):
         a, b = large_seed(random.Random(9)), large_seed(random.Random(9))

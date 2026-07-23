@@ -20,7 +20,7 @@ A response may trigger several checks:
 
 `random` generates bytes or printable lines. `mutation` makes one to four byte, token, line or field edits to the six small seeds and a runtime seed of 5,000–20,000 rows. The token dictionary includes punctuation, control bytes, encoding boundaries and date/time boundary values. Large seeds are generated deterministically and are not stored in the source tree.
 
-`grammar.json` and its bounded expansion adapt the [grammar fuzzer spike](https://github.com/codexary/payslate-spike-grammar-fuzzer). Delimiters, newlines and optional holiday columns stay consistent within each file. Unknown extra columns from that experiment are removed to follow [ADR 0003](../docs/adr/0003-timesheet-format-contract.md). Names refer only to the synthetic employees checked or created by setup. The grammar covers aliases, dates, times, overnight shifts, BOM, blank rows, quoted delimiters and doubled quotes; it excludes quoted newlines because their policy is undecided. Each strategy has an independent seeded random stream. Identical seeds reproduce candidate bytes with Python 3.12 and the same campaign files; timings and server state can still change outcomes.
+`grammar.json` and its bounded expansion adapt the [grammar fuzzer spike](https://github.com/codexary/payslate-spike-grammar-fuzzer). Delimiters, newlines and optional columns stay consistent within each file. Unknown extra columns are ignored under [ADR 0012](../docs/adr/0012-timesheet-upload-limits.md), so the grammar includes optional `notes` / `break minutes` columns and the independent contract check accepts them; duplicated known columns remain invalid. Names refer only to the synthetic employees checked or created by setup. The grammar covers aliases, dates, times, overnight shifts, BOM, blank rows, quoted delimiters and doubled quotes; the contract rejects quoted line breaks, so the grammar excludes them and mutation covers them. Each strategy has an independent seeded random stream. Identical seeds reproduce candidate bytes with Python 3.12 and the same campaign files; timings and server state can still change outcomes.
 
 The event target creates one pay run for 6–12 July 2026 and sends random names or mutations of `calculate`, `approve`, `pay` and `reverse`, as listed in the API specification. `all` uses only random and mutation for this target; grammar is unavailable. Every event is encoded as a single URL path segment. The pay run is shared, so later transition responses may depend on earlier requests and reduction attempts.
 
@@ -65,6 +65,8 @@ docker compose down -v
 ```
 
 ## Read the results
+
+Known finding: the event target reports `problem-format` for protocol-invalid URIs such as an encoded NUL (`%00`), which the servlet container rejects before the application runs with a 400 Tomcat minimal HTML page rather than problem details; the page contains no server version and does not echo the URI.
 
 `robustness/out/` is ignored by Git and retained between runs. `findings.json` contains summaries and a representative for each distinct class. A class is `(oracle, status, response title, first 60 detail characters with digits replaced by #)`; its directory name is a hash of that tuple. Separate causes with identical public responses can collapse into one class. Candidate counts and oracle totals cover original responses only; they exclude reduction attempts. A strategy may find nothing within its budget.
 

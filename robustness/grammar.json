@@ -16,7 +16,7 @@
     "\r\n"
   ],
   "header": [
-    "<employee_header><delimiter><date_header><delimiter><start_header><delimiter><end_header><holiday_header_slot>"
+    "<employee_header><delimiter><date_header><delimiter><start_header><delimiter><end_header><holiday_header_slot><notes_header_slot><break_header_slot>"
   ],
   "employee_header": [
     "employee",
@@ -52,7 +52,7 @@
     "<row><newline><row><newline><row><newline><row><newline><row>"
   ],
   "row": [
-    "<employee><delimiter><date><delimiter><start><delimiter><end><holiday_value_slot>"
+    "<employee><delimiter><date><delimiter><start><delimiter><end><holiday_value_slot><notes_value_slot><break_value_slot>"
   ],
   "employee": [
     "<plain_name>",
@@ -136,5 +136,32 @@
     "",
     "<newline>",
     "<newline><newline>"
+  ],
+  "notes_header_slot": [
+    "",
+    "<delimiter>notes"
+  ],
+  "notes_value_slot": [
+    "",
+    "<delimiter><notes>"
+  ],
+  "notes": [
+    "",
+    "Morning shift",
+    "\"Roster, checked\"",
+    "\"Said \"\"yes\"\"\""
+  ],
+  "break_header_slot": [
+    "",
+    "<delimiter>break minutes"
+  ],
+  "break_value_slot": [
+    "",
+    "<delimiter><break_minutes>"
+  ],
+  "break_minutes": [
+    "0",
+    "15",
+    "30"
   ]
 }
