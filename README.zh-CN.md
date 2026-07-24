@@ -60,6 +60,8 @@ Compose 启动后，打开 `http://localhost:3000`（或 `PAYSLATE_GRAFANA_PORT`
 
 请求速率面板显示哪些路由最繁忙。4xx 面板按路由和状态码显示被拒绝的请求；5xx 面板按路由显示服务端错误，没有错误时显示零。延迟面板按路由显示以秒为单位的第 95 百分位耗时和最大耗时。两个饱和度面板分别显示 Tomcat 请求线程和 Hikari 数据库连接的使用率，以每 10 秒区间内的使用量峰值除以配置的容量上限（200 个线程和 10 个连接），换算为百分比。每个面板的图例列出最高和最新使用率，方便值班人员判断容量占用情况。HTTP 面板排除 `/actuator.*` 健康探测；饱和度指标反映整个服务的资源使用情况。
 
+**Denied requests by route and status** 面板按路由和状态码显示 401、403 及记录不存在所产生的 404，取每个区间内的请求速率峰值；计数器标签仅有 `route` 和 `status`。每次拒绝还会写入一条 ECS JSON 事件，字段为 `event.action=access-denied`、`event.outcome=failure`、`http.response.status_code`、`http.request.method`、`http.route`，以及已验证 JWT 中存在的 `sub` 和 `employer_id`；不记录 token、请求正文、查询字符串或路径变量的原始值，未匹配的路由记为 `UNKNOWN`。 每条 `/v1` 路由模板（以及 `UNKNOWN`）的拒绝计数器在启动时初始化为零，因此单次拒绝也能显示出来，面板图例只列出确实发生过拒绝的序列；5xx 计时器无法预先注册，所以某条路由首次出现 500 时，速率可能仍显示为零，直到下一次出现。
+
 ## 关于本仓库
 
 Elsworne、Payslate 和团队成员均为虚构。

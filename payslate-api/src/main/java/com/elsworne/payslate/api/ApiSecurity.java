@@ -18,7 +18,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.firewall.RequestRejectedHandler;
 import org.springframework.web.filter.ServerHttpObservationFilter;
 import tools.jackson.databind.json.JsonMapper;
@@ -39,9 +41,22 @@ class ApiSecurity {
   }
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http, JsonMapper mapper) throws Exception {
+  SecurityFilterChain securityFilterChain(
+      HttpSecurity http, JsonMapper mapper, DeniedRequests denials) throws Exception {
     var authenticationEntryPoint = new BearerTokenAuthenticationEntryPoint();
     var accessDeniedHandler = new BearerTokenAccessDeniedHandler();
+    AuthenticationEntryPoint entryPoint =
+        (request, response, error) -> {
+          authenticationEntryPoint.commence(request, response, error);
+          denials.record(request, response.getStatus());
+          writeProblem(mapper, request, response, "Authentication is required.");
+        };
+    AccessDeniedHandler deniedHandler =
+        (request, response, error) -> {
+          accessDeniedHandler.handle(request, response, error);
+          denials.record(request, response.getStatus());
+          writeProblem(mapper, request, response, "Access is denied.");
+        };
     return http.csrf(csrf -> csrf.disable())
         .authorizeHttpRequests(
             auth ->
@@ -57,16 +72,11 @@ class ApiSecurity {
             oauth ->
                 oauth
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter()))
-                    .authenticationEntryPoint(
-                        (request, response, error) -> {
-                          authenticationEntryPoint.commence(request, response, error);
-                          writeProblem(mapper, request, response, "Authentication is required.");
-                        })
-                    .accessDeniedHandler(
-                        (request, response, error) -> {
-                          accessDeniedHandler.handle(request, response, error);
-                          writeProblem(mapper, request, response, "Access is denied.");
-                        }))
+                    .authenticationEntryPoint(entryPoint)
+                    .accessDeniedHandler(deniedHandler))
+        .exceptionHandling(
+            errors ->
+                errors.authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
         .build();
   }
 

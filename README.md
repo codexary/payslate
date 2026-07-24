@@ -60,6 +60,8 @@ With the Compose stack running, open Grafana at `http://localhost:3000` (or the 
 
 Request rate shows which routes are busy. The 4xx panel groups rejected requests by route and status; the 5xx panel shows server failures by route and reads zero when there are none. The latency panel shows p95 and maximum request duration in seconds by route. The two saturation panels show busy Tomcat request threads and active Hikari database connections as percentages of their configured capacities (200 threads and 10 connections), using the peak per 10-second interval. Each legend shows the maximum and last percentage, helping the person on call judge how much capacity is in use. HTTP panels exclude `/actuator.*` health probes; saturation gauges cover the whole service.
 
+The **Denied requests by route and status** panel shows the peak rate per interval for 401, 403 and record-not-found 404 responses, using only `route` and `status` counter tags. Each denial also writes an ECS JSON event with `event.action=access-denied`, `event.outcome=failure`, `http.response.status_code`, `http.request.method`, `http.route`, and verified JWT claims `sub` and `employer_id` when present; tokens, bodies, query strings and raw path variables are excluded, and unmatched routes use `UNKNOWN`. Denial counters for every `/v1` route template (and `UNKNOWN`) start at zero so a single denial is visible, and the panel lists only series that have counted a denial; 5xx timers cannot be pre-registered, so a first 500 on a route can show as zero rate until the next one.
+
 ## About this repository
 
 Elsworne, Payslate and the team are fictional.

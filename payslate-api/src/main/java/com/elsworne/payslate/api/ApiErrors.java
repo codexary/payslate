@@ -22,8 +22,15 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 class ApiErrors extends ResponseEntityExceptionHandler {
   private static final Logger LOG = LoggerFactory.getLogger(ApiErrors.class);
 
+  private final DeniedRequests denials;
+
+  ApiErrors(DeniedRequests denials) {
+    this.denials = denials;
+  }
+
   @ExceptionHandler(RecordNotFoundException.class)
-  ProblemDetail notFound() {
+  ProblemDetail notFound(HttpServletRequest request) {
+    denials.record(request, HttpStatus.NOT_FOUND.value());
     var detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Record not found");
     detail.setTitle("Not found");
     return detail;

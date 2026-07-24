@@ -336,6 +336,79 @@
         }
       },
       "interval": "10s"
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Denied requests by route and status",
+      "description": "Security denials: 401, 403 and record-not-found 404 only. Peak request rate within each query interval; unknown routes use UNKNOWN. Zero means no denials were observed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max_over_time((sum by (route, status) (rate(payslate_access_denied_total{service_name=\"payslate-api\"}[$__rate_interval])))[$__interval:5s]) or on() label_replace(vector(0), \"route\", \"no denials\", \"\", \"\")",
+          "legendFormat": "{{route}} {{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "reducer": "max",
+                "op": "lte",
+                "value": 0
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": false
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "10s"
     }
   ]
 }
