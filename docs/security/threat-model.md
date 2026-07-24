@@ -35,9 +35,10 @@ flowchart TB
 
 | Element / boundary | STRIDE concern | Sensitive data and consequence | Mitigation and status |
 | --- | --- | --- | --- |
-| Browser to API | Spoofing, tampering, repudiation | A caller could act as another operator or deny an action | OIDC bearer authentication and officer/employee role checks present and verified; request audit trail open |
+| Browser to API | Spoofing, tampering, repudiation | A caller could act as another operator or deny an action | OIDC bearer authentication and officer/employee role checks present and verified; denied requests (401/403 and record-not-found 404) logged as security events and counted on the dashboard; a full audit of successful reads and changes is still open |
 | Search text to SQL | Tampering, information disclosure | Injection could reveal other employees' pay rates | Parameter binding fixed; a PostgreSQL regression test and the SpotBugs and Semgrep gates verify it |
-| CSV upload to API | Denial of service, tampering | A malformed or oversized file could exhaust resources | Format parser present; size limits and bounded streaming open |
+| CSV upload to API | Denial of service, tampering | A malformed or oversized file could exhaust resources | [ADR 0012](../adr/0012-timesheet-upload-limits.md) limits: strict UTF-8, 1 MB per file and multipart request, 10 000 data rows, years 2000–2099, and trimmed employee names of 1–100 characters without controls (including tab); linear streaming parsing, line-numbered 400s, generic 500 problems and JUnit regression tests present; verified by campaign replay (seed `20260717`, 1 500 candidates, no findings) |
+| CSV uploads for the same employee | Tampering | Duplicate uploads or overlapping shifts can cause duplicate pay; uploading the same file twice pays its shifts twice | Open; reported to product owner Margaret O'Connell; upload parsing limits do not resolve pay correctness |
 | API to PostgreSQL | Information disclosure, elevation of privilege | A query could cross employer boundaries | Private connectivity and employer-scoped queries verified; least privilege and encryption at rest open |
 | API to pay engine to payslip | Tampering, repudiation | A wrong figure could reach an approved payslip | Engine characterization and state tests present; an immutable approval record open |
 | API to operator ABA download | Information disclosure, tampering | Another employer's bank file could be downloaded | Paid-state and employer-scoped authorization present; download audit open |
