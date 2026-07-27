@@ -1,5 +1,6 @@
 package com.elsworne.payslate.bank;
 
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
@@ -24,6 +25,17 @@ public final class AbaFile {
       String traceBsb,
       String traceAccount,
       List<Payment> payments) {}
+
+  public static String accountTitle(String name) {
+    // Banks credit by BSB and account number; the title is only for reconciliation.
+    String title =
+        Normalizer.normalize(name, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .replaceAll("[^A-Za-z0-9 ,.'-]", " ")
+            .replaceAll(" +", " ")
+            .trim();
+    return title.substring(0, Math.min(title.length(), 32)).trim();
+  }
 
   public String write(Batch batch) {
     if (batch == null || batch.payments() == null || batch.payments().isEmpty())

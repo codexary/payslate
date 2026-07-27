@@ -255,13 +255,18 @@ public class PayrollService {
     if (!state(employer, runId).equals("PAID")) throw new PayRunConflictException();
     var payments = new ArrayList<AbaFile.Payment>();
     jdbc.query(
-        "SELECT e.bsb,e.account,e.name,p.net FROM payslips p JOIN employees e ON e.id=p.employee_id AND e.employer_id=p.employer_id WHERE p.employer_id=? AND p.run_id=? ORDER BY e.id",
+        "SELECT e.bsb,e.account,e.name,p.net,e.id FROM payslips p JOIN employees e ON e.id=p.employee_id AND e.employer_id=p.employer_id WHERE p.employer_id=? AND p.run_id=? ORDER BY e.id",
         rs -> {
           long cents = rs.getBigDecimal(4).movePointRight(2).longValueExact();
-          if (cents > 0)
+          if (cents > 0) {
+            String title = AbaFile.accountTitle(rs.getString(3));
+            if (title.isEmpty())
+              throw new InvalidRequestException(
+                  "Employee " + rs.getLong(5) + ": name has no characters a bank file accepts");
             payments.add(
                 new AbaFile.Payment(
-                    rs.getString(1), rs.getString(2), rs.getString(3), "PAY " + runId, cents));
+                    rs.getString(1), rs.getString(2), title, "PAY " + runId, cents));
+          }
         },
         employer,
         runId);

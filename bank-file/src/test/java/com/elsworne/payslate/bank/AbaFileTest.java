@@ -11,6 +11,25 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class AbaFileTest {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("accountTitles")
+  void convertsAccountTitle(String name, String input, String expected) {
+    assertThat(AbaFile.accountTitle(input)).isEqualTo(expected);
+  }
+
+  static Stream<Arguments> accountTitles() {
+    return Stream.of(
+        Arguments.of("accents", "Renée Dubois", "Renee Dubois"),
+        Arguments.of("decomposed_accents", "Rene\u0301e Dubois", "Renee Dubois"),
+        Arguments.of("unsupported_punctuation", "Lee & Sons Café", "Lee Sons Cafe"),
+        Arguments.of("forty_characters", "A".repeat(40), "A".repeat(32)),
+        Arguments.of("valid_name", "Anne-Marie O'Neil, Jr.", "Anne-Marie O'Neil, Jr."),
+        Arguments.of("valid_digits", "Team 42", "Team 42"),
+        Arguments.of("spaces", "  Lee   Sons  ", "Lee Sons"),
+        Arguments.of("trim_after_cut", "A".repeat(31) + " B", "A".repeat(31)),
+        Arguments.of("non_latin_only", "陈静", ""));
+  }
+
   private static AbaFile.Batch batch(String bsb, long cents) {
     return new AbaFile.Batch(
         "CBA",

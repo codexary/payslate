@@ -41,7 +41,7 @@ flowchart TB
 | CSV uploads for the same employee | Tampering | Duplicate uploads or overlapping shifts can cause duplicate pay; uploading the same file twice pays its shifts twice | Open; reported to product owner Margaret O'Connell; upload parsing limits do not resolve pay correctness |
 | API to PostgreSQL | Information disclosure, elevation of privilege | A query could cross employer boundaries | Private connectivity and employer-scoped queries verified; least privilege and encryption at rest open |
 | API to pay engine to payslip | Tampering, repudiation | A wrong figure could reach an approved payslip | Engine characterization and state tests present; an immutable approval record open |
-| API to operator ABA download | Information disclosure, tampering | Another employer's bank file could be downloaded | Paid-state and employer-scoped authorization present; download audit open |
+| API to operator ABA download | Information disclosure, tampering | Another employer's bank file could be downloaded | Paid-state and employer-scoped authorization present; employee names converted to bank account titles at the export boundary; download audit and a separate bank account name field per employee open |
 | Old export to aba-convert | Tampering, denial of service | A crafted file could corrupt memory in the local converter | Robustness review done: a stack buffer overflow in the account-name copy and an integer overflow in the batch total reproduced under ASan/UBSan; a bounded name copy and a checked batch total are open |
 | Local ABA to bank handoff | Spoofing, tampering | An altered file could reach the bank | File-format checks partial; authenticated transfer and reconciliation open |
 
