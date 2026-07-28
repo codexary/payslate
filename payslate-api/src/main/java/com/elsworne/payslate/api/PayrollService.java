@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,6 +86,13 @@ public class PayrollService {
   }
 
   private int uploadRows(String employer, List<TimesheetCsv.Row> rows) {
+    var wf = TimesheetShifts.firstInFileOverlapLine(rows);
+    if (wf.isPresent())
+      throw new InvalidRequestException(
+          "Line " + wf.getAsLong() + ": shift overlaps an earlier shift in the file");
+
+    record ResolvedShift(TimesheetCsv.Row row, long employeeId) {}
+    var resolved = new ArrayList<ResolvedShift>();
     for (var row : rows) {
       var ids =
           jdbc.queryForList(
@@ -95,10 +103,35 @@ public class PayrollService {
       if (ids.size() != 1)
         throw new InvalidRequestException(
             "Line " + row.line() + ": employee name must match exactly one employee");
+      resolved.add(new ResolvedShift(row, ids.get(0)));
+    }
+
+    var employeeIds = resolved.stream().map(ResolvedShift::employeeId).distinct().sorted().toList();
+    if (!employeeIds.isEmpty())
+      new NamedParameterJdbcTemplate(jdbc)
+          .queryForList(
+              "SELECT id FROM employees WHERE employer_id = :employer AND id IN (:ids)"
+                  + " ORDER BY id FOR UPDATE",
+              Map.of("employer", employer, "ids", employeeIds),
+              Long.class);
+
+    for (var shift : resolved) {
+      var row = shift.row();
+      Long overlaps =
+          jdbc.queryForObject(
+              "SELECT COUNT(*) FROM timesheets WHERE employer_id = ? AND employee_id = ? AND starts < ? AND ends > ?",
+              Long.class,
+              employer,
+              shift.employeeId(),
+              row.end(),
+              row.start());
+      if (overlaps != null && overlaps > 0)
+        throw new ShiftOverlapConflictException(
+            "Line " + row.line() + ": shift overlaps an existing shift");
       jdbc.update(
           "INSERT INTO timesheets(employer_id,employee_id,starts,ends,public_holiday) VALUES(?,?,?,?,?)",
           employer,
-          ids.get(0),
+          shift.employeeId(),
           row.start(),
           row.end(),
           row.publicHoliday());

@@ -53,6 +53,13 @@ class ApiErrors extends ResponseEntityExceptionHandler {
     return detail;
   }
 
+  @ExceptionHandler(ShiftOverlapConflictException.class)
+  ProblemDetail shiftOverlap(ShiftOverlapConflictException error) {
+    var detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, error.getMessage());
+    detail.setTitle("Shift overlap");
+    return detail;
+  }
+
   @ExceptionHandler({AccessDeniedException.class, AuthenticationException.class})
   void securityFailure(RuntimeException error) {
     // Spring Security writes every 401 and 403, so these leave through its handlers.
