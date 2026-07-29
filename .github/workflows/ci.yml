@@ -89,7 +89,8 @@ jobs:
   semgrep:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    container: semgrep/semgrep:1.183.0
+    container: semgrep/semgrep:1.183.0@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: semgrep scan --config .semgrep/payslate.yml --error payslate-api/src/main/java
+      - run: semgrep --test --config .semgrep/payslate.yml .semgrep/payslate.java

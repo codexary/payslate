@@ -32,3 +32,13 @@ rules:
           - pattern: $JDBC.execute($SQL + $INPUT, ...)
           - pattern: $STMT.executeQuery($SQL + $INPUT)
           - pattern: $CONN.prepareStatement($SQL + $INPUT)
+      # A query split across two string literals is itself a constant: no
+      # untrusted value reaches it, so joining literals must not be flagged.
+      # A non-literal operand still carries input and keeps matching above.
+      - pattern-not: $JDBC.queryForList("..." + "...", ...)
+      - pattern-not: $JDBC.queryForObject("..." + "...", ...)
+      - pattern-not: $JDBC.query("..." + "...", ...)
+      - pattern-not: $JDBC.update("..." + "...", ...)
+      - pattern-not: $JDBC.execute("..." + "...", ...)
+      - pattern-not: $STMT.executeQuery("..." + "...")
+      - pattern-not: $CONN.prepareStatement("..." + "...")
