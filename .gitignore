@@ -10,3 +10,4 @@ legacy/aba-convert/tests/.total-overflow.log
 
 robustness/out/
 robustness/__pycache__/
+**/.cifuzz-corpus/
