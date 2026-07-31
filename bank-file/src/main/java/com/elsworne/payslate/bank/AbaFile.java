@@ -131,11 +131,6 @@ public final class AbaFile {
       } else if (!traceBsb.equals(tb) || !traceAccount.equals(ta))
         throw new IllegalArgumentException("Inconsistent trace account");
       if (code.equals("53")) {
-        // Inherited path: the desktop product marked reversed payments with this
-        // reference prefix and never sent them to the bank.
-        String reference = line.substring(62, 80);
-        if (reference.startsWith("PS7REVERSAL"))
-          throw new IllegalStateException("Desktop reversal reference");
         credit = Math.addExact(credit, cents);
         payments.add(
             new Payment(
