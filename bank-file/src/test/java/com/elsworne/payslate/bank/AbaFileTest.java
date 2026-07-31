@@ -106,6 +106,7 @@ class AbaFileTest {
   static Stream<Arguments> tamperedFiles() {
     return Stream.of(
         Arguments.of("record_wrong_length", 1, 0, 1, ""),
+        Arguments.of("header_invalid_date", 0, 74, 80, "999999"),
         Arguments.of("detail_invalid_amount_character", 1, 20, 21, "X"),
         Arguments.of("trailer_wrong_credit_total", 3, 30, 40, "0000000000"),
         Arguments.of("detail_invalid_bsb_separator", 1, 4, 5, "X"));

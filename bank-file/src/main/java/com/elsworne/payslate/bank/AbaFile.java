@@ -105,7 +105,12 @@ public final class AbaFile {
     require(header.substring(56, 62), "[0-9]{6}", "user ID");
     if (header.substring(30, 56).isBlank() || header.substring(62, 74).isBlank())
       throw new IllegalArgumentException("Empty ABA header field");
-    LocalDate date = LocalDate.parse(header.substring(74, 80), DATE);
+    LocalDate date;
+    try {
+      date = LocalDate.parse(header.substring(74, 80), DATE);
+    } catch (java.time.DateTimeException invalidDate) {
+      throw new IllegalArgumentException("Invalid ABA header date", invalidDate);
+    }
     var payments = new ArrayList<Payment>();
     long credit = 0, debit = 0;
     String traceBsb = null, traceAccount = null;
