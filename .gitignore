@@ -12,3 +12,4 @@ robustness/out/
 robustness/__pycache__/
 **/.cifuzz-corpus/
 legacy/aba-convert/fuzz/out/
+legacy/aba-convert/tests/.regress.log

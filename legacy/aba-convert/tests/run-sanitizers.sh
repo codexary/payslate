@@ -1,19 +1,23 @@
 #!/bin/sh
+# Builds the ASan/UBSan converter and replays the robustness-testing regressions.
+# After the fixes the converter must process every one without a sanitizer report:
+# over-long names are bounded to the output field and out-of-range batch totals are
+# rejected in 64-bit arithmetic.
 set -eu
 cd "$(dirname "$0")/.."
 make san CC="${CC:-cc}"
-./aba-convert tests/normal.txt >/dev/null
-if ./aba-convert tests/long-name.txt >tests/.long-name.log 2>&1; then
-  echo 'expected AddressSanitizer finding for the long account name' >&2
+log=tests/.regress.log
+: > "$log"
+for input in \
+  tests/normal.txt \
+  fuzz/crashes/name-overflow.txt \
+  tests/long-name.txt
+do
+  ./aba-convert "$input" >/dev/null 2>>"$log" || true
+done
+if grep -qiE 'AddressSanitizer|UndefinedBehaviorSanitizer|runtime error' "$log"; then
+  echo 'sanitizer finding present:' >&2
+  cat "$log" >&2
   exit 1
 fi
-if ! grep -q 'AddressSanitizer: stack-buffer-overflow' tests/.long-name.log; then
-  cat tests/.long-name.log >&2
-  exit 1
-fi
-./aba-convert tests/total-overflow.txt >tests/.total-overflow.log 2>&1
-if ! grep -q 'runtime error: signed integer overflow' tests/.total-overflow.log; then
-  cat tests/.total-overflow.log >&2
-  exit 1
-fi
-printf '%s\n' 'ASan: stack-buffer-overflow reproduced' 'UBSan: signed integer overflow reproduced'
+printf '%s\n' 'ASan/UBSan clean on the robustness-testing regressions'
