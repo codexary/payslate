@@ -35,12 +35,13 @@ int main(int argc, char **argv) {
       return 2;
     }
     char source_name[41];
-    char account_name[24];
+    char account_name[25];
     char bsb[8];
     char account[10];
     char amount[11];
     field(source_name, line, 1, 40);
-    strcpy(account_name, source_name);
+    /* Bound the copy to the 24-character output field (plus a NUL). */
+    snprintf(account_name, sizeof account_name, "%.24s", source_name);
     field(bsb, line, 41, 7);
     field(account, line, 48, 9);
     field(amount, line, 57, 10);
