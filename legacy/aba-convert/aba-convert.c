@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 static void field(char *out, const char *line, int start, int width) {
   memcpy(out, line + start, width);
@@ -26,7 +27,7 @@ int main(int argc, char **argv) {
     return 2;
   }
   puts("0                 PAYSLATE SYNTHETIC BATCH");
-  int total = 0;
+  long long total = 0;
   int count = 0;
   while (fgets(line, sizeof line, in) != NULL) {
     if (line[0] != 'D' || strlen(line) < 67) {
@@ -45,12 +46,37 @@ int main(int argc, char **argv) {
     field(bsb, line, 41, 7);
     field(account, line, 48, 9);
     field(amount, line, 57, 10);
-    int cents = atoi(amount);
+    /* Accept digits only (no sign, no empty field), parse in 64 bits and keep the
+       total within the ten-digit output fields. */
+    if (amount[0] == '\0') {
+      fprintf(stderr, "invalid amount\n");
+      fclose(in);
+      return 2;
+    }
+    for (int i = 0; amount[i] != '\0'; i++)
+      if (amount[i] < '0' || amount[i] > '9') {
+        fprintf(stderr, "invalid amount\n");
+        fclose(in);
+        return 2;
+      }
+    errno = 0;
+    char *end;
+    long long cents = strtoll(amount, &end, 10);
+    if (errno != 0 || *end != '\0' || cents < 0 || cents > 9999999999LL) {
+      fprintf(stderr, "amount out of range\n");
+      fclose(in);
+      return 2;
+    }
     total += cents;
+    if (total > 9999999999LL) {
+      fprintf(stderr, "batch total out of range\n");
+      fclose(in);
+      return 2;
+    }
     count++;
-    printf("1%-7s%-9s%-24s%010d\n", bsb, account, account_name, cents);
+    printf("1%-7s%-9s%-24s%010lld\n", bsb, account, account_name, cents);
   }
-  printf("7%010d%06d\n", total, count);
+  printf("7%010lld%06d\n", total, count);
   fclose(in);
   return 0;
 }

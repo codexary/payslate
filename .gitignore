@@ -14,3 +14,5 @@ robustness/__pycache__/
 legacy/aba-convert/fuzz/out/
 legacy/aba-convert/tests/.regress.log
 legacy/aba-convert/tmp.in
+legacy/aba-convert/tmp.out
+legacy/aba-convert/tmp.err
