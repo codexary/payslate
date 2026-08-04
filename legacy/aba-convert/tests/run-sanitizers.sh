@@ -11,7 +11,9 @@ log=tests/.regress.log
 for input in \
   tests/normal.txt \
   fuzz/crashes/name-overflow.txt \
-  tests/long-name.txt
+  fuzz/crashes/total-overflow.txt \
+  tests/long-name.txt \
+  tests/total-overflow.txt
 do
   ./aba-convert "$input" >/dev/null 2>>"$log" || true
 done
