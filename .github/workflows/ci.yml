@@ -94,3 +94,23 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: semgrep scan --config .semgrep/payslate.yml --error payslate-api/src/main/java
       - run: semgrep --test --config .semgrep/payslate.yml .semgrep/payslate.java
+  fuzz-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      # Jazzer fuzzes one @FuzzTest per invocation; call each target separately so
+      # neither is skipped. Keep the two together near two minutes of wall-clock time.
+      - name: Fuzz the ABA parser (short)
+        env:
+          JAZZER_FUZZ: '1'
+        run: ./mvnw -B -ntp -pl bank-file -am test -Dtest=AbaReferenceFuzzTest -Djazzer.max_duration=60s -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Fuzz the timesheet importer (short)
+        env:
+          JAZZER_FUZZ: '1'
+        run: ./mvnw -B -ntp -pl payslate-api -am test -Dtest=TimesheetImporterFuzzTest -Djazzer.max_duration=60s -Dsurefire.failIfNoSpecifiedTests=false
