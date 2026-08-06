@@ -114,3 +114,16 @@ jobs:
         env:
           JAZZER_FUZZ: '1'
         run: ./mvnw -B -ntp -pl payslate-api -am test -Dtest=TimesheetImporterFuzzTest -Djazzer.max_duration=60s -Dsurefire.failIfNoSpecifiedTests=false
+  converter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Build aba-convert and run its regression scripts
+        working-directory: legacy/aba-convert
+        run: |
+          make
+          for t in tests/*.sh; do
+            echo "== $t =="
+            sh "$t"
+          done
