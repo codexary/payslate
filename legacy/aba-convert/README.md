@@ -9,8 +9,12 @@ make
 ```
 
 The input is a header line beginning `H,PAYSLATE`, then one detail line per payment: a `D`, a 40-character
-account name, a 7-character BSB, a 9-character account number and a 10-digit amount in cents. A bad header or a
-short detail line exits with status 2.
+account name, a 7-character BSB, a 9-character account number and a 10-digit amount in cents. The batch ends
+with a control trailer line: a `T`, a 6-digit record count and a 10-digit total in cents, then nothing but the
+line ending. The converter reads the whole input first and writes nothing unless the header, the record count
+and the total all reconcile; a bad header, a short detail line, a missing or non-reconciling trailer, trailing
+characters on the trailer, an empty batch, or data after the trailer exits with status 2. An export without a
+trailer (an older desktop build) is rejected — re-export from a patched Payslate 7.
 
 Two inherited weaknesses were found with a robustness review and fixed: the account name was copied into a
 24-byte buffer without a length check, and the batch total was accumulated in a 32-bit signed integer. The

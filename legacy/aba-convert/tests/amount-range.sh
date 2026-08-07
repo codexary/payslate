@@ -8,8 +8,8 @@ name=$(printf '%-40s' "Synthetic One")
 detail() { printf 'D%s123-456000000001%s\n' "$name" "$1"; }
 runfile() { set +e; ./aba-convert "$1" >tmp.out 2>tmp.err; printf '%s' "$?"; set -e; }
 
-# 1. single amount 9999999999: accepted, trailer carries it
-{ printf 'H,PAYSLATE\n'; detail 9999999999; } > tmp.in
+# 1. single amount 9999999999: accepted, control trailer reconciles
+{ printf 'H,PAYSLATE\n'; detail 9999999999; printf 'T%06d%010d\n' 1 9999999999; } > tmp.in
 s=$(runfile tmp.in)
 [ "$s" = 0 ] || { echo "max single amount rejected (exit $s)" >&2; cat tmp.err >&2; exit 1; }
 grep -q '^79999999999' tmp.out || { echo "trailer total wrong:" >&2; cat tmp.out >&2; exit 1; }

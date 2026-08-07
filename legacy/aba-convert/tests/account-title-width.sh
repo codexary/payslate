@@ -10,10 +10,10 @@ name24=$(printf 'X%.0s' $(seq 1 24))
 name25=$(printf 'X%.0s' $(seq 1 25))
 want24=$(printf 'X%.0s' $(seq 1 24))
 # 24-char name: kept in full (account_name column holds all 24)
-out24=$(printf 'H,PAYSLATE\n%s' "$(line "$name24")" | { cat > tmp.in; ./aba-convert tmp.in; })
+out24=$(printf 'H,PAYSLATE\n%s\nT%06d%010d\n' "$(line "$name24")" 1 12000 | { cat > tmp.in; ./aba-convert tmp.in; })
 title24=$(printf '%s\n' "$out24" | sed -n '2p' | cut -c18-41)
 # 25-char name: truncated to 24
-out25=$(printf 'H,PAYSLATE\n%s' "$(line "$name25")" | { cat > tmp.in; ./aba-convert tmp.in; })
+out25=$(printf 'H,PAYSLATE\n%s\nT%06d%010d\n' "$(line "$name25")" 1 12000 | { cat > tmp.in; ./aba-convert tmp.in; })
 title25=$(printf '%s\n' "$out25" | sed -n '2p' | cut -c18-41)
 rm -f tmp.in
 fail=0
