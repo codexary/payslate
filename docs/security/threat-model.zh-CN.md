@@ -42,7 +42,7 @@ flowchart TB
 | API 到薪资引擎到工资单 | 篡改、抵赖 | 错误金额可能进入已核准的工资单 | 引擎特征化与状态测试已具备；不可变的核准记录尚待完成 |
 | API 到操作员 ABA 下载 | 信息泄露、篡改 | 可能下载到其他雇主的银行文件 | 已付状态与按雇主限定的授权已具备；导出时将员工姓名转换为符合银行文件要求的账户名；下载审计及为每位员工增设独立的银行账户名字段尚待完成 |
 | 旧导出到 aba-convert | 篡改、拒绝服务 | 构造的文件可能破坏本地转换器的内存 | 在 ASan/UBSan 下复现的账户名复制栈缓冲区溢出和批次合计整数溢出现均已修复：账户名复制长度限制为输出字段所容纳的 24 个字符，批次合计采用 64 位整数运算进行累加和范围校验；sanitizer 回归用例 [fuzz/crashes/name-overflow.txt](../../legacy/aba-convert/fuzz/crashes/name-overflow.txt) 和 [fuzz/crashes/total-overflow.txt](../../legacy/aba-convert/fuzz/crashes/total-overflow.txt) 由 [tests/run-sanitizers.sh](../../legacy/aba-convert/tests/run-sanitizers.sh) 重放；已将覆盖率引导的模糊测试作为防护措施，使用 Jazzer 测试解析器，在本地使用 AFL++ 测试转换器（见 [ADR 0014](../adr/0014-scheduled-fuzzing.zh-CN.md)） |
-| 本地 ABA 到银行交接 | 仿冒、篡改 | 被改动的文件可能送达银行 | 文件格式校验部分具备；经认证的传输与对账尚待完成 |
+| 本地 ABA 到银行交接 | 仿冒、篡改 | 被改动的文件可能送达银行 | 每份导出都要求带控制尾记录（记录条数与合计），`aba-convert` 在对账相符之前不写输出，截断或篡改金额的导出会被拒绝（见 [ADR 0015](../adr/0015-require-a-control-trailer-on-desktop-exports.zh-CN.md)）；对银行的经认证传输仍待完成 |
 
 STRIDE 指仿冒、篡改、抵赖、信息泄露、拒绝服务和权限提升。静态分析的发现标记的是待审查的风险，而非已证实的完整
 利用链。当前 API 会校验 OIDC token，并对每次数据库查询按雇主限定；标记为尚待完成的项留待后续工作。
