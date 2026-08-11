@@ -33,6 +33,8 @@ Net: 20.00
 
 覆盖率引导的健壮性测试（模糊测试）：ABA 解析器和工时表导入器各有一个 Jazzer `@FuzzTest` harness。它们在 `./mvnw -B -ntp verify` 时回放保存的输入，设置 `JAZZER_FUZZ=1` 后生成新输入，例如 `JAZZER_FUZZ=1 ./mvnw -B -ntp -pl bank-file -am test -Dtest=AbaReferenceFuzzTest -Dsurefire.failIfNoSpecifiedTests=false`。短时测试在拉取请求上运行，长时测试每晚运行（见 `.github/workflows/`）；C 转换器 `legacy/aba-convert` 用 AFL++ 在本地模糊测试（`legacy/aba-convert/fuzz/run-afl.sh`）。见 ADR 0014。
 
+符号执行：`legacy/aba-convert` 的批次读取函数还用 KLEE 探索，它会解出能走过对账检查的输入；读取代码改动时在本地用 Docker 运行（`legacy/aba-convert/klee/run-klee.sh`，见 `legacy/aba-convert/README.zh-CN.md`）。
+
 ## Payslate Online API
 
 使用 `./mvnw -B -ntp verify` 构建。运行本地 PostgreSQL 时，先设置本地开发用的 `PAYSLATE_DB_USER`、`PAYSLATE_DB_PASSWORD`、`PAYSLATE_DEV_ISSUER_ADMIN` 和 `PAYSLATE_DEV_ISSUER_PASSWORD`，执行 `./mvnw -pl payslate-api -am package`，再执行 `docker compose up --build`。API 监听宿主机的 8080 端口，可以用 `PAYSLATE_API_PORT` 改用其他端口。`payslate-api/openapi.yaml` 描述员工、员工搜索、CSV 工时表、工资批次、工资单与 ABA 下载。存活与就绪端点为 `/actuator/health/liveness` 和 `/actuator/health/readiness`。错误采用 `application/problem+json`，日志采用 ECS 结构化 JSON。`./mvnw -B -ntp -Pdocker verify` 也运行 PostgreSQL Testcontainers 测试。CSV 支持逗号、分号和制表符、ADR 0003 规定的表头别名、ISO 和澳大利亚日期、24 小时与 12 小时时间，以及带引号的姓名。上传文件必须采用 UTF-8 编码（可带 BOM），大小不超过 1 MB，数据行不超过 10 000 行，年份限于 2000–2099。引号内换行和重复的已知列会被拒绝，未知的附加列会被忽略。表头或某一行出错时，错误信息会指出行号；不是 UTF-8 的文件整体拒绝。列数混杂、非法日期和空班次会被拒绝。所有测试数据均为合成数据；仓库税表仅为示例，生产环境每财年必须加载官方税表。

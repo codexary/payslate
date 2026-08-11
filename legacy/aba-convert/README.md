@@ -36,3 +36,11 @@ sh fuzz/triage.sh
 
 `scripts/build-container.sh` and `scripts/build-sanitizers-container.sh` build the same two variants inside a
 pinned `gcc:14.2.0` container.
+
+`klee/` holds a KLEE harness for the batch reader (`read_batch` in `convert.c`). It runs in the official `klee/klee:v3.2` image, which is amd64 only and runs under emulation on Apple silicon:
+
+```sh
+sh klee/run-klee.sh 1   # explore a one-record batch; tests go to klee/out
+sh klee/run-range.sh    # the single-amount range check
+sh klee/replay.sh       # replay the generated tests natively under ASan, with gcov
+```

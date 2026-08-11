@@ -16,3 +16,11 @@ legacy/aba-convert/tests/.regress.log
 legacy/aba-convert/tmp.in
 legacy/aba-convert/tmp.out
 legacy/aba-convert/tmp.err
+legacy/aba-convert/klee/out*/
+legacy/aba-convert/klee/replay-inputs/
+legacy/aba-convert/klee/replay_bin
+legacy/aba-convert/klee/*.bc
+legacy/aba-convert/klee/*.o
+*.gcno
+*.gcda
+*.gcov

@@ -28,3 +28,11 @@ sh fuzz/triage.sh
 
 `scripts/build-container.sh` 和 `scripts/build-sanitizers-container.sh` 在钉死版本的 `gcc:14.2.0` 容器里构建这
 两个变体。
+
+`klee/` 下是批次读取函数（`convert.c` 里的 `read_batch`）的 KLEE harness。它在官方镜像 `klee/klee:v3.2` 里运行，该镜像只有 amd64 版本，在 Apple 芯片上通过模拟运行：
+
+```sh
+sh klee/run-klee.sh 1   # 探索一条记录的批次，测试写到 klee/out
+sh klee/run-range.sh    # 单笔金额的范围检查
+sh klee/replay.sh       # 在本地用 ASan 回放生成的测试，并统计 gcov 覆盖
+```
