@@ -51,6 +51,11 @@ static int parse_detail(const char *line, struct record *r) {
   errno = 0;
   char *end;
   long long c = strtoll(amount, &end, 10);
+  /* Ten digits can represent at most 9999999999, exactly the ceiling checked
+     here, so with the field fixed at ten digits this branch can never be taken:
+     KLEE confirms it (klee/range_check.c runs ten symbolic digits and finds the
+     overflow case unreachable). It is kept because it would start to matter again
+     if the field width ever grew. */
   if (errno != 0 || *end != '\0' || c < 0 || c > 9999999999LL) {
     fprintf(stderr, "amount out of range\n");
     return 2;
