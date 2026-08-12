@@ -34,7 +34,7 @@ the full set KLEE generates. To regenerate the full set (one batch per `.ktest`,
 deduplicated by exact bytes) and inspect it:
 
 ```sh
-sh klee/run-klee.sh 1                 # 151 tests at one record, in klee/out
+sh klee/run-klee.sh 1                 # 57 tests at one record, in klee/out
 rt=/tmp/klee_build160stp_z3/lib       # inside the KLEE image
 gcc -DDUMP_BATCH -I/tmp/klee_src/include -I. klee/harness.c -o /tmp/dump \
     -L"$rt" -lkleeRuntest -Wl,-rpath,"$rt"

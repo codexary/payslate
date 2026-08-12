@@ -38,9 +38,12 @@ static int parse_detail(const char *line, struct record *r) {
   snprintf(r->account_name, sizeof r->account_name, "%.24s", source_name);
   field(r->bsb, line, 41, 7);
   field(r->account, line, 48, 9);
-  field(amount, line, 57, 10);
-  if (amount[0] == '\0') { fprintf(stderr, "invalid amount\n"); return 2; }
-  for (int i = 0; amount[i] != '\0'; i++)
+  /* The amount is a fixed 10-digit, zero-filled field; unlike the text fields
+     above it must not be space-trimmed, or a short number padded with trailing
+     spaces would read as a smaller value (see tests/amount-trailing-space.sh). */
+  memcpy(amount, line + 57, 10);
+  amount[10] = '\0';
+  for (int i = 0; i < 10; i++)
     if (amount[i] < '0' || amount[i] > '9') {
       fprintf(stderr, "invalid amount\n");
       return 2;

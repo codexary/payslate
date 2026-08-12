@@ -17,7 +17,7 @@
 `tests/reconcile-cases/` 为每一种退出结果保留一份能读的批次，从 KLEE 生成的完整集合中挑出。要重新生成完整集合（每个 `.ktest` 一份批次，按字节去重）并查看：
 
 ```sh
-sh klee/run-klee.sh 1                 # 一条记录时生成 151 个测试，放在 klee/out
+sh klee/run-klee.sh 1                 # 一条记录时生成 57 个测试，放在 klee/out
 rt=/tmp/klee_build160stp_z3/lib       # 在 KLEE 镜像里
 gcc -DDUMP_BATCH -I/tmp/klee_src/include -I. klee/harness.c -o /tmp/dump \
     -L"$rt" -lkleeRuntest -Wl,-rpath,"$rt"

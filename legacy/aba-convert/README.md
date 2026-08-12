@@ -9,7 +9,7 @@ make
 ```
 
 The input is a header line beginning `H,PAYSLATE`, then one detail line per payment: a `D`, a 40-character
-account name, a 7-character BSB, a 9-character account number and a 10-digit amount in cents. The batch ends
+account name, a 7-character BSB, a 9-character account number and a 10-digit, zero-filled amount in cents (digits only; a space anywhere in the field is rejected). The batch ends
 with a control trailer line: a `T`, a 6-digit record count and a 10-digit total in cents, then nothing but the
 line ending. The converter reads the whole input first and writes nothing unless the header, the record count
 and the total all reconcile; a bad header, a short detail line, a missing or non-reconciling trailer, trailing
