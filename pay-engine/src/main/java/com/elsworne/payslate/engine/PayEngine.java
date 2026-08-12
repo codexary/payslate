@@ -126,7 +126,9 @@ public final class PayEngine {
         BigDecimal.valueOf(overtime).divide(MINUTES_PER_HOUR, 4, RoundingMode.HALF_EVEN));
   }
 
-  private static BigDecimal withholding(BigDecimal gross) {
+  /* Package-private, not private, so WithholdingBoundaryTest in this package can pin it
+  directly against the Z3-checked model without reflection. */
+  static BigDecimal withholding(BigDecimal gross) {
     try (var input = PayEngine.class.getResourceAsStream("/example-tax-schedule.csv");
         var reader = new java.io.BufferedReader(new java.io.InputStreamReader(input))) {
       BigDecimal minimum = BigDecimal.ZERO, base = BigDecimal.ZERO, rate = BigDecimal.ZERO;
