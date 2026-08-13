@@ -1,0 +1,13 @@
+# Withholding boundary fixtures. Columns: gross,expected_withholding,origin.
+# "CSV edge" rows are the bracket starts taken from example-tax-schedule.csv and the
+# cent on either side. "Z3 step" rows are the smallest gross at which each bracket
+# first steps, as reported by analysis/tax_schedule_check.py. Expected values are
+# the withholding model (base + (gross - minimum) * rate, HALF_UP to cents).
+499.99,0.00,CSV edge below $500
+500.00,0.00,CSV edge at $500
+500.01,0.00,CSV edge above $500
+500.05,0.01,Z3 step (first in the 10% bracket)
+999.99,50.00,CSV edge below $1000
+1000.00,50.00,CSV edge at $1000
+1000.01,50.00,CSV edge above $1000
+1000.03,50.01,Z3 step (first in the 20% bracket)
