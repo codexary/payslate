@@ -35,6 +35,8 @@ Net: 20.00
 
 符号执行：`legacy/aba-convert` 的批次读取函数还用 KLEE 探索，它会解出能走过对账检查的输入；读取代码改动时在本地用 Docker 运行（`legacy/aba-convert/klee/run-klee.sh`，见 `legacy/aba-convert/README.zh-CN.md`）。
 
+具体符号执行（concolic）：`legacy/aba-convert` 里同一道对账门还用 SymCC 配合 AFL++ 一起攻，在本地钉死版本的镜像里跑（`legacy/aba-convert/symcc/`，见 `legacy/aba-convert/README.zh-CN.md`）；只在本地运行，arm64 原生。
+
 预扣税表检查：`analysis/tax_schedule_check.py` 用 Z3 证明引擎读取的预扣税表对每一个整分毛工资都满足的性质（先 `pip install -r analysis/requirements.txt`，再 `python3 analysis/tax_schedule_check.py`）。见 `analysis/README.zh-CN.md`。
 
 ## Payslate Online API

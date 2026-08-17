@@ -44,3 +44,9 @@ sh klee/run-klee.sh 1   # explore a one-record batch; tests go to klee/out
 sh klee/run-range.sh    # the single-amount range check
 sh klee/replay.sh       # replay the generated tests natively under ASan, with gcov
 ```
+
+`symcc/` holds a pinned image for the hybrid-fuzzing lab: SymCC with the QSYM backend and AFL++ `v5.02c`, both built from LLVM 15, so the converter is instrumented by the same compiler the fuzzer is built against. Unlike the KLEE image it is built and run arm64-native. Build it once with:
+
+```sh
+sh symcc/build-image.sh   # tags the image payslate-aba-symcc
+```

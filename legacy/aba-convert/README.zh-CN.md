@@ -36,3 +36,9 @@ sh klee/run-klee.sh 1   # 探索一条记录的批次，测试写到 klee/out
 sh klee/run-range.sh    # 单笔金额的范围检查
 sh klee/replay.sh       # 在本地用 ASan 回放生成的测试，并统计 gcov 覆盖
 ```
+
+`symcc/` 下是混合模糊测试实验用的钉死版本镜像：带 QSYM 后端的 SymCC 和 AFL++ `v5.02c`，两者都用 LLVM 15 构建，所以转换器和模糊器由同一个编译器插桩。它不像 KLEE 镜像那样靠模拟，而是在 arm64 上原生构建、原生运行。先构建一次：
+
+```sh
+sh symcc/build-image.sh   # 镜像标签 payslate-aba-symcc
+```

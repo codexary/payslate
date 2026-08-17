@@ -35,6 +35,8 @@ Coverage-guided robustness testing (fuzzing): the ABA parser and the timesheet i
 
 Symbolic execution: the batch reader in `legacy/aba-convert` is also explored with KLEE, which solves for inputs that cross its reconciliation checks; it runs locally in Docker when the reader changes (`legacy/aba-convert/klee/run-klee.sh`, see `legacy/aba-convert/README.md`).
 
+Concolic execution: the same reconciliation gate in `legacy/aba-convert` is also attacked by running SymCC alongside AFL++ in a pinned local image (`legacy/aba-convert/symcc/`, see `legacy/aba-convert/README.md`); it runs locally only, arm64-native.
+
 Withholding schedule checks: `analysis/tax_schedule_check.py` uses Z3 to prove properties of the withholding schedule the engines read, for every whole-cent gross (`pip install -r analysis/requirements.txt`, then `python3 analysis/tax_schedule_check.py`). See `analysis/README.md`.
 
 ## Payslate Online API
