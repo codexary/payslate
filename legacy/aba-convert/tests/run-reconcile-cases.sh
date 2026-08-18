@@ -10,6 +10,12 @@
 # The accepted case uses a canonical ten-digit amount. The exhaustive set (one file
 # per .ktest, deduplicated by exact bytes) is NOT committed -- see klee/README.md for
 # how to regenerate and replay it. Ordinary (non-sanitizer) build.
+#
+# accept-new-amounts.txt is kept alongside them from a different source: it is the
+# byte-for-byte output of a SymCC run (QSYM backend) on the refactored fixed-width
+# reader (strtoll removed) from a mutated-amount seed, amounts 12001 and
+# 4987530459 reconciling to 4987542460. It guards the reconciliation invariant on
+# a non-trivial split, not just the canonical case.
 set -eu
 cd "$(dirname "$0")/.."
 make >/dev/null
@@ -34,8 +40,9 @@ check() {
 }
 
 check accept.txt                             0 ""
+check accept-new-amounts.txt                 0 ""
 check reject-invalid-control-trailer.txt     2 "invalid control trailer"
 check reject-does-not-reconcile.txt          2 "control trailer does not reconcile"
 check reject-invalid-amount.txt              2 "invalid amount"
 check reject-invalid-detail.txt              2 "invalid detail"
-printf '%s\n' 'reconcile-cases: five KLEE exit classes checked (exact rc + message + reconciliation invariant)'
+printf '%s\n' 'reconcile-cases: five KLEE exit classes plus one SymCC-solved batch checked (exact rc + message + reconciliation invariant)'
