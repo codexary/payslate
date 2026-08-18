@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 static void field(char *out, const char *line, int start, int width) {
   memcpy(out, line + start, width);
@@ -43,20 +42,19 @@ static int parse_detail(const char *line, struct record *r) {
      spaces would read as a smaller value (see tests/amount-trailing-space.sh). */
   memcpy(amount, line + 57, 10);
   amount[10] = '\0';
-  for (int i = 0; i < 10; i++)
+  long long c = 0;
+  for (int i = 0; i < 10; i++) {
     if (amount[i] < '0' || amount[i] > '9') {
       fprintf(stderr, "invalid amount\n");
       return 2;
     }
-  errno = 0;
-  char *end;
-  long long c = strtoll(amount, &end, 10);
-  /* Ten digits can represent at most 9999999999, exactly the ceiling checked
-     here, so with the field fixed at ten digits this branch can never be taken:
-     KLEE confirms it (klee/range_check.c runs ten symbolic digits and finds the
-     overflow case unreachable). It is kept because it would start to matter again
-     if the field width ever grew. */
-  if (errno != 0 || *end != '\0' || c < 0 || c > 9999999999LL) {
+    c = c * 10 + (amount[i] - '0');
+  }
+  /* Ten digits accumulate to at most 9999999999, so with the field fixed at ten
+     digits this branch can never be taken: KLEE confirms it (klee/range_check.c
+     runs ten symbolic digits and finds the overflow case unreachable). It is kept
+     because it would start to matter again if the field width ever grew. */
+  if (c > 9999999999LL) {
     fprintf(stderr, "amount out of range\n");
     return 2;
   }
@@ -96,11 +94,12 @@ int read_batch(const unsigned char *buf, size_t len, struct record *recs,
             || (rest[0] == '\r' && rest[1] == '\n' && rest[2] == '\0')))
         bad = 1;
       if (bad) { fprintf(stderr, "invalid control trailer\n"); return 2; }
-      char dc[7], dt[11];
-      field(dc, line, 1, 6);
-      field(dt, line, 7, 10);
-      declared_count = (int) strtol(dc, NULL, 10);
-      declared_total = strtoll(dt, NULL, 10);
+      /* The count and total digits were just validated above; accumulate them
+         in place instead of copying the fields out and parsing with strtol. */
+      declared_count = 0;
+      for (int i = 1; i <= 6; i++) declared_count = declared_count * 10 + (line[i] - '0');
+      declared_total = 0;
+      for (int i = 7; i <= 16; i++) declared_total = declared_total * 10 + (line[i] - '0');
       trailer_seen = 1;
       continue;
     }

@@ -1,10 +1,11 @@
 #include <klee/klee.h>
 #include <assert.h>
 
-/* The ten-character amount field, with ten symbolic digits. read_batch keeps the
-   field to digits and parses it with strtoll; the value is the same ten-digit
-   number computed here. KLEE has no path on which it exceeds the ten-digit
-   ceiling, so read_batch's `cents > 9999999999` branch is unreachable. */
+/* The ten-character amount field, with ten symbolic digits. parse_detail keeps
+   the field to digits and accumulates them, the same ten-digit number computed
+   here. KLEE has no path on which it exceeds the ten-digit ceiling, so
+   parse_detail's `c > 9999999999` range check is unreachable; it is kept because
+   a wider field would reactivate it. */
 int main(void) {
   unsigned char d[10];
   klee_make_symbolic(d, sizeof d, "amount");
