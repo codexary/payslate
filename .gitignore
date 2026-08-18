@@ -24,3 +24,4 @@ legacy/aba-convert/klee/*.o
 *.gcno
 *.gcda
 *.gcov
+legacy/aba-convert/symcc/out/

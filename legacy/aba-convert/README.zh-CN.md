@@ -42,3 +42,10 @@ sh klee/replay.sh       # 在本地用 ASan 回放生成的测试，并统计 gc
 ```sh
 sh symcc/build-image.sh   # 镜像标签 payslate-aba-symcc
 ```
+
+从一个种子出发跑 SymCC，看它能解出什么：
+
+```sh
+sh symcc/run-symcc.sh                             # 从一个金额被改过的批次出发（默认）
+sh symcc/run-symcc.sh fuzz/seeds/two-records.txt  # 从一个已经对得上账的批次出发
+```

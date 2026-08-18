@@ -50,3 +50,10 @@ sh klee/replay.sh       # replay the generated tests natively under ASan, with g
 ```sh
 sh symcc/build-image.sh   # tags the image payslate-aba-symcc
 ```
+
+Run SymCC on the converter from a seed and classify what it solves:
+
+```sh
+sh symcc/run-symcc.sh                             # from a mutated-amount batch (the default)
+sh symcc/run-symcc.sh fuzz/seeds/two-records.txt  # from a batch that already reconciles
+```
