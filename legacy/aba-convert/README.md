@@ -57,3 +57,11 @@ Run SymCC on the converter from a seed and classify what it solves:
 sh symcc/run-symcc.sh                             # from a mutated-amount batch (the default)
 sh symcc/run-symcc.sh fuzz/seeds/two-records.txt  # from a batch that already reconciles
 ```
+
+Compare hybrid fuzzing (AFL++ with SymCC beside it) against AFL++ alone over repeated runs on disjoint CPU cores, in a quiet window:
+
+```sh
+sh symcc/compare.sh 5 600   # 5 runs of 10 minutes each; a summary prints at the end
+```
+
+`compare.sh` runs `run-hybrid.sh` and `run-afl-pair.sh` for each run, then `summarise.py`, which reads every run's `plot_data` and replays the queues to count batches that reconcile with amounts different from the seed.

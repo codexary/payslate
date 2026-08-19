@@ -49,3 +49,11 @@ sh symcc/build-image.sh   # 镜像标签 payslate-aba-symcc
 sh symcc/run-symcc.sh                             # 从一个金额被改过的批次出发（默认）
 sh symcc/run-symcc.sh fuzz/seeds/two-records.txt  # 从一个已经对得上账的批次出发
 ```
+
+在安静的时间窗口里，把混合模糊测试（AFL++ 旁边加 SymCC）和单独 AFL++ 放到不相交的 CPU 核上重复多次比较：
+
+```sh
+sh symcc/compare.sh 5 600   # 5 次，每次 10 分钟；结束时打印汇总
+```
+
+`compare.sh` 每次运行 `run-hybrid.sh` 和 `run-afl-pair.sh`，再调用 `summarise.py`，后者读取每次运行的 `plot_data`，并回放队列，统计那些金额不同于种子却仍然对得上账的批次。
