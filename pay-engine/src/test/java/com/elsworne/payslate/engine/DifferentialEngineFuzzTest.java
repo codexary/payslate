@@ -7,8 +7,9 @@ package com.elsworne.payslate.engine;
 // never in the paid amounts. The input bytes become a month of shifts: two bytes make
 // one day's minutes (1..1440, so a day can pass the 8-hour daily-overtime line and the
 // month can pass the weekly-overtime line), the high bit flags a public holiday. The
-// test first asserts the engines agree on everything, so Jazzer treats any divergence
-// as a finding; a later commit narrows the oracle to the paid amounts and invariants.
+// test compares the paid amounts the migration must preserve and the payslip
+// invariants, not the displayed hours or leave: ADR 0018 keeps the frozen engine as an
+// oracle for the money only, and LeaveRoundingDifferenceTest pins the 0.0001-hour gap.
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,12 +58,15 @@ class DifferentialEngineFuzzTest {
       return; // an invalid roster is not a finding
     }
 
+    // Paid amounts: both engines compute these from exact integer minutes, so the
+    // migration requires them to agree.
     assertThat(a.gross()).isEqualByComparingTo(b.gross());
     assertThat(a.tax()).isEqualByComparingTo(b.tax());
     assertThat(a.retirement()).isEqualByComparingTo(b.retirement());
     assertThat(a.net()).isEqualByComparingTo(b.net());
-    assertThat(a.leaveHours()).isEqualByComparingTo(b.leaveHours());
-    assertThat(a.ordinaryHours()).isEqualByComparingTo(b.ordinaryHours());
-    assertThat(a.overtimeHours()).isEqualByComparingTo(b.overtimeHours());
+    // Payslip invariants on the authoritative engine.
+    assertThat(a.net()).isEqualByComparingTo(a.gross().subtract(a.tax()).subtract(a.deductions()));
+    assertThat(a.gross()).isGreaterThanOrEqualTo(BigDecimal.ZERO);
+    assertThat(a.tax()).isGreaterThanOrEqualTo(BigDecimal.ZERO);
   }
 }
