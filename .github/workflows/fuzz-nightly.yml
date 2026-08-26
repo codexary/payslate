@@ -30,7 +30,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      # One target per invocation; the two together stay within ten minutes.
+      # One target per invocation; the three together stay within fifteen minutes.
       - name: Fuzz the ABA parser (long)
         if: steps.recent.outputs.run == 'true'
         env:
@@ -41,3 +41,8 @@ jobs:
         env:
           JAZZER_FUZZ: '1'
         run: ./mvnw -B -ntp -pl payslate-api -am test -Dtest=TimesheetImporterFuzzTest -Djazzer.max_duration=5m -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Fuzz the pay engines against each other (long)
+        if: steps.recent.outputs.run == 'true'
+        env:
+          JAZZER_FUZZ: '1'
+        run: ./mvnw -B -ntp -pl pay-engine -am test -Dtest=DifferentialEngineFuzzTest -Djazzer.max_duration=5m -Dsurefire.failIfNoSpecifiedTests=false
