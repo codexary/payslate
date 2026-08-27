@@ -28,9 +28,10 @@ refer to [docs/security/threat-model.md](threat-model.md).
 ## Notes
 
 - Severity is a qualitative judgement of impact and reachability on this system, not a
-  scored vector. The two converter memory-safety fixes (findings 6 and 7) concern a local
-  tool that some sites still run on an older build, so they also need a published
-  advisory with a scored vector.
+  scored vector. The two converter memory-safety fixes (findings 6 and 7) are also
+  published as advisory [PAYSLATE-2026-0001](advisories/PAYSLATE-2026-0001.md), which
+  carries a CVSS 3.1 vector and score, because the converter is a local tool that some
+  sites still run on an older build.
 - Findings 6, 7, 9 and 10 are in the inherited desktop converter `aba-convert`; the
   hosted service does not run it. Findings 1–5 are in the hosted API.
 - Each fix landed with its guarding regression on the same branch; the differential

@@ -25,7 +25,8 @@ repository is synthetic; reproduce with synthetic data only.
 We support the most recent released version of Payslate. The hosted service always
 runs the latest release. The inherited desktop converter `aba-convert` is distributed
 with the repository; sites that still run an older local build should rebuild from the
-latest release, which carries the converter memory-safety fixes.
+latest release, which carries the converter memory-safety fixes published as
+[PAYSLATE-2026-0001](docs/security/advisories/PAYSLATE-2026-0001.md).
 
 | Component | Supported |
 | --- | --- |
