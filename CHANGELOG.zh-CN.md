@@ -6,6 +6,10 @@ Payslate 的所有重要变更都记在这里。格式遵循
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号采用
 [语义化版本](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
+## [Unreleased]
+
+暂无变更。
+
 ## [1.0.0] - 2026-08-28
 
 首个发布版本。本仓库的数据全是合成的。

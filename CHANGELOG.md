@@ -6,6 +6,10 @@ All notable changes to Payslate are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+No changes yet.
+
 ## [1.0.0] - 2026-08-28
 
 First released version. All data in this repository is synthetic.
